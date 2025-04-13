@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "379146167730",
+    "project_id": "anfeca2025",
+    "storage_bucket": "anfeca2025.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:379146167730:android:8f395c4804dd1d5f0230ab",
+        "android_client_info": {
+          "package_name": "com.uv.kooxi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD1SH4ARdA6y35KNo9lwwvHZZcbQsAwicU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
