@@ -24,12 +24,12 @@ class RegisterScreenViewModel : ViewModel() {
     private val _registrationState = MutableStateFlow<RegisterState>(RegisterState.Idle)
     val registrationState: StateFlow<RegisterState> = _registrationState
 
-    // Función para registrar un nuevo usuario
-    fun register(email: String, password: String) {
+    // Función para registrar un nuevo usuario, ahora con el parámetro adicional 'username'
+    fun register(email: String, password: String, username: String) {
         _registrationState.value = RegisterState.Loading
 
         viewModelScope.launch {
-            val result = usuarioRepository.registrarse(email, password)
+            val result = usuarioRepository.registrarse(email, password, username)
 
             if (result.isSuccess) {
                 _registrationState.value = RegisterState.Success(result.getOrNull())

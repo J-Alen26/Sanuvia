@@ -29,8 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-// Aseguramos que HomeScreenViewModel esté disponible
-import com.uv.kooxi.ui.screens.HomeScreenViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

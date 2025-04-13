@@ -7,6 +7,7 @@ import androidx.navigation.compose.rememberNavController
 import com.uv.kooxi.ui.screens.HomeScreen
 import com.uv.kooxi.ui.screens.LoginScreen
 import com.uv.kooxi.ui.screens.RegisterScreen
+import com.uv.kooxi.ui.screens.UserEditScreen
 
 
 @Composable
@@ -27,9 +28,16 @@ fun NavGraph(startDestination: String = "login") {
         }
         composable("home") {
             HomeScreen(
-                onLogout = {navController.navigate("login")}
+                onLogout = {navController.navigate("login")},
+                onEditProfile = {navController.navigate("editProfile")}
             )
 
+        }
+        composable("editProfile") {
+            UserEditScreen(
+
+            )
+            
         }
     }
 }

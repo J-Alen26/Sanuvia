@@ -9,13 +9,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     onNavigateToLogin: () -> Unit,
     onNavigateToHome: () -> Unit
 ) {
+    var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -25,7 +25,7 @@ fun RegisterScreen(
     val viewModel: RegisterScreenViewModel = viewModel()
     val registrationState by viewModel.registrationState.collectAsState()
 
-    // Navega a la pantalla de login cuando el registro es exitoso
+    // Navega a las pantallas cuando el registro es exitoso
     LaunchedEffect(registrationState) {
         if (registrationState is RegisterState.Success) {
             onNavigateToLogin()
@@ -55,6 +55,18 @@ fun RegisterScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Campo para nombre de usuario
+            OutlinedTextField(
+                value = username,
+                onValueChange = {
+                    username = it
+                    if (localError.isNotEmpty()) localError = ""
+                },
+                label = { Text("Nombre de Usuario") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            // Campo para email
             OutlinedTextField(
                 value = email,
                 onValueChange = {
@@ -65,6 +77,7 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))
+            // Campo para contraseña
             OutlinedTextField(
                 value = password,
                 onValueChange = {
@@ -76,6 +89,7 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))
+            // Campo para confirmar contraseña
             OutlinedTextField(
                 value = confirmPassword,
                 onValueChange = {
@@ -87,16 +101,15 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(16.dp))
-
             Button(
                 onClick = {
-                    if (email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
+                    if (username.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
                         localError = "Por favor, completa todos los campos."
                     } else if (password != confirmPassword) {
                         localError = "Las contraseñas no coinciden."
                     } else {
                         localError = ""
-                        viewModel.register(email, password)
+                        viewModel.register(email, password, username)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -111,7 +124,6 @@ fun RegisterScreen(
                     Text("Registrarse")
                 }
             }
-
             if (errorMessageToShow.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -119,7 +131,6 @@ fun RegisterScreen(
                     color = if (registrationState is RegisterState.Success) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                 )
             }
-
             Spacer(modifier = Modifier.height(8.dp))
             TextButton(onClick = onNavigateToLogin) {
                 Text("¿Ya tienes una cuenta? Inicia Sesión")
