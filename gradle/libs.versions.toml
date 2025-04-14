@@ -1,5 +1,7 @@
 [versions]
 accompanistPager = "0.36.0"
+accompanistPagerIndicators = "0.27.0"
+accompanistPagerVersion = "0.27.0"
 agp = "8.9.1"
 coilCompose = "2.2.2"
 firebaseBom = "33.12.0"
@@ -21,6 +23,8 @@ ui = "1.7.8"
 
 accompanist-pager = { module = "com.google.accompanist:accompanist-pager", version.ref = "accompanistPager" }
 accompanist-pager-indicators = { module = "com.google.accompanist:accompanist-pager-indicators", version.ref = "accompanistPager" }
+accompanist-pager-indicators-v0270 = { module = "com.google.accompanist:accompanist-pager-indicators", version.ref = "accompanistPagerIndicators" }
+accompanist-pager-v0270 = { module = "com.google.accompanist:accompanist-pager", version.ref = "accompanistPagerVersion" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }

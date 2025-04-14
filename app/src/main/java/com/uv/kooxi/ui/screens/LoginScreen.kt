@@ -24,6 +24,7 @@ fun LoginScreen(
     // Use the LoginScreenViewModel
     val viewModel: LoginScreenViewModel = viewModel()
     val loginState by viewModel.loginState.collectAsState()
+    val passwordResetState by viewModel.passwordResetState.collectAsState()
 
     // Navigate to home if login is successful
     LaunchedEffect(loginState) {
@@ -101,6 +102,38 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(8.dp))
             TextButton(onClick = onNavigateToRegister) {
                 Text("¿No tienes una cuenta? Regístrate")
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(
+                onClick = {
+                    if (email.isEmpty()) {
+                        localError = "Por favor, introduce tu correo para recuperar la contraseña."
+                    } else {
+                        viewModel.recoverPassword(email)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("¿Olvidaste tu contraseña?")
+            }
+
+            when (passwordResetState) {
+                is PasswordResetState.Loading -> {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+                is PasswordResetState.Success -> {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Correo de recuperación enviado", color = MaterialTheme.colorScheme.primary)
+                }
+                is PasswordResetState.Error -> {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text((passwordResetState as PasswordResetState.Error).message, color = MaterialTheme.colorScheme.error)
+                }
+                else -> {}
             }
         }
     }

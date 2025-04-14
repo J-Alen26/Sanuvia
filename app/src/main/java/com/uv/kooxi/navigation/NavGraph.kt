@@ -35,6 +35,7 @@ fun NavGraph(startDestination: String = "login") {
         }
         composable("editProfile") {
             UserEditScreen(
+                onNavigateToLogin = {navController.navigate("login")}
 
             )
             

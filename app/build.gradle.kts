@@ -63,7 +63,10 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.firestore.ktx)
     implementation(libs.firebase.storage.ktx)
-    implementation ("io.coil-kt:coil-compose:2.2.2")
+    implementation (libs.coil.compose)
+    implementation(libs.accompanist.pager)
+    implementation(libs.accompanist.pager.indicators)
+    implementation ("com.google.android.gms:play-services-location:21.3.0")
 
 
 }

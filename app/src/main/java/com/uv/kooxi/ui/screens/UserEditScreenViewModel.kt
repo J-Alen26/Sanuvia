@@ -37,21 +37,50 @@ class UserEditScreenViewModel : ViewModel() {
         }
     }
 
-    fun actualizarUsuario(nuevoNombre: String, nuevaFotoUri: Uri?) {
+    fun actualizarUsuario(nuevoNombre: String) {
         _state.value = _state.value.copy(isLoading = true, error = null, success = false)
 
         viewModelScope.launch {
-            val photoUrl = nuevaFotoUri?.let {
-                val result = usuarioRepo.subirFotoPerfil(it)
-                if (result.isSuccess) result.getOrNull() else null
-            }
-
-            val result = usuarioRepo.editarUsuario(username = nuevoNombre, photoUrl = photoUrl)
+            val result = usuarioRepo.editarUsuario(username = nuevoNombre)
 
             if (result.isSuccess) {
                 _state.value = _state.value.copy(
                     username = nuevoNombre,
-                    photoUrl = photoUrl ?: _state.value.photoUrl,
+                    isLoading = false,
+                    success = true
+                )
+            } else {
+                _state.value = _state.value.copy(
+                    isLoading = false,
+                    error = result.exceptionOrNull()?.message
+                )
+            }
+        }
+    }
+
+    fun eliminarCuenta() {
+        // Set loading state and reset error and success flags
+        _state.value = _state.value.copy(isLoading = true, error = null, success = false)
+        viewModelScope.launch {
+            // Llamar a la función de eliminación de usuario del repositorio
+            val result = usuarioRepo.eliminarPerfil()
+            if (result.isSuccess) {
+                _state.value = _state.value.copy(isLoading = false, success = true)
+            } else {
+                _state.value = _state.value.copy(isLoading = false, error = result.exceptionOrNull()?.message)
+            }
+        }
+    }
+
+    fun subirFotoPerfil(fotoUri: Uri) {
+        _state.value = _state.value.copy(isLoading = true, error = null, success = false)
+        viewModelScope.launch {
+            // Llamar al método de la clase Usuario que sube la foto de perfil
+            val result = usuarioRepo.subirFotoPerfil(fotoUri)
+            if (result.isSuccess) {
+                // Se espera que el método retorne la URL de la foto subida
+                _state.value = _state.value.copy(
+                    photoUrl = result.getOrNull() ?: "",
                     isLoading = false,
                     success = true
                 )

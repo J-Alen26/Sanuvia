@@ -1,5 +1,6 @@
 package com.uv.kooxi.data.repository
 
+import android.Manifest
 import android.net.Uri
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -7,6 +8,10 @@ import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 import androidx.core.net.toUri
+import android.content.Context
+import android.location.Location
+import androidx.annotation.RequiresPermission
+import com.google.android.gms.location.LocationServices
 
 class Usuario {
 
@@ -14,7 +19,7 @@ class Usuario {
 
     companion object {
         // Imagen por defecto. Coloca 'profile.png' en: app/src/main/res/drawable/profile.png
-        const val DEFAULT_PROFILE_IMAGE_URI = "android.resource://com.uv.kooxi/drawable/profile.png"
+        const val DEFAULT_PROFILE_IMAGE_URI = "android.resource://com.uv.kooxi/drawable/profile"
     }
 
     // Método de registro actualizado para incluir el nombre de usuario (username)
@@ -25,8 +30,8 @@ class Usuario {
             if (user != null) {
                 // Actualiza el perfil con el nombre de usuario y la imagen por defecto
                 val request = UserProfileChangeRequest.Builder().apply {
-                    setDisplayName(username)
-                    setPhotoUri(DEFAULT_PROFILE_IMAGE_URI.toUri())
+                    displayName = username
+                    photoUri = DEFAULT_PROFILE_IMAGE_URI.toUri()
                 }.build()
                 user.updateProfile(request).await()
             }
@@ -98,5 +103,22 @@ class Usuario {
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
+    suspend fun obtenerUbicacionUsuario(context: Context): Result<Location> {
+        // Obtiene el FusedLocationProviderClient
+        val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+        return try {
+            // Obtiene la última ubicación disponible de forma asíncrona
+            val location = fusedLocationClient.lastLocation.await()
+            if (location != null) {
+                Result.success(location)
+            } else {
+                Result.failure(Exception("No se pudo obtener la ubicación"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        } as Result<Location>
     }
 }
