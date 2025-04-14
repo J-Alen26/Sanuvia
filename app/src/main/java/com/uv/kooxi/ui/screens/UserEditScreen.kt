@@ -26,7 +26,6 @@ fun UserEditScreen(
     onNavigateToLogin: () -> Unit
 
     ) {
-    // Obtiene el estado desde el ViewModel de edición
     val viewModel: UserEditScreenViewModel = viewModel()
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -42,7 +41,6 @@ fun UserEditScreen(
         updatedUsername.value = userState.username
     }
 
-    // Organiza el layout en una columna que ocupa toda la pantalla
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -50,11 +48,9 @@ fun UserEditScreen(
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Zona superior: Imagen de perfil y nombre de usuario
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Carga la foto de perfil con Coil
             val painter = rememberAsyncImagePainter(userState.photoUrl)
             Image(
                 painter = painter,
@@ -74,7 +70,6 @@ fun UserEditScreen(
             )
         }
 
-        // Zona inferior: Botones para editar y eliminar cuenta
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -95,11 +90,9 @@ fun UserEditScreen(
                 Text("Guardar")
             }
 
-            // If in loading state, show a CircularProgressIndicator in place of the delete button
             if (userState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
             } else {
-                // Button to trigger delete account confirmation dialog
                 Button(
                     onClick = { showDeleteDialog = true },
                     modifier = Modifier.fillMaxWidth(),

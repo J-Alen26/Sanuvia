@@ -28,19 +28,15 @@ class LoginScreenViewModel : ViewModel() {
 
     private val usuarioRepository = Usuario()
 
-    // Estado privado mutable y su contraparte inmutable para observar en la UI
     private val _loginState = MutableStateFlow<LoginState>(LoginState.Idle)
     val loginState: StateFlow<LoginState> = _loginState
 
     private val _passwordResetState = MutableStateFlow<PasswordResetState>(PasswordResetState.Idle)
     val passwordResetState: StateFlow<PasswordResetState> = _passwordResetState
 
-    // Función para realizar el login
     fun login(email: String, password: String) {
-        // Actualiza el estado a Loading
         _loginState.value = LoginState.Loading
 
-        // Lanza una corrutina en el scope del ViewModel
         viewModelScope.launch {
             val result = usuarioRepository.iniciarSesion(email, password)
 

@@ -57,22 +57,17 @@ fun HomeScreen(
     onLogout: () -> Unit = {},
     onEditProfile: () -> Unit = {}
 ) {
-    // Instancia del HomeScreenViewModel para manejar acciones como logout
     val homeViewModel: HomeScreenViewModel = viewModel()
 
-    // Solicitar permiso de ubicación desde HomeScreen
     val context = LocalContext.current
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            // El permiso fue concedido; el ViewModel ya lo verifica en init o podrías reintentar obtener la ubicación
         } else {
-            // El usuario negó el permiso: puedes mostrar un mensaje o una lógica particular.
         }
     }
 
-    // Lanza la solicitud de permiso si no está concedido
     LaunchedEffect(Unit) {
         if (androidx.core.content.ContextCompat.checkSelfPermission(
                 context,
@@ -83,7 +78,6 @@ fun HomeScreen(
         }
     }
 
-    // Estado para el menú desplegable y el estado de logout
     var menuExpanded by remember { mutableStateOf(false) }
     var isLoggingOut by remember { mutableStateOf(false) }
 
@@ -92,7 +86,6 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("Raíz y Vida") },
                 actions = {
-                    // Si se está cerrando sesión, mostramos un indicador circular
                     if (isLoggingOut) {
                         CircularProgressIndicator(
                             modifier = Modifier

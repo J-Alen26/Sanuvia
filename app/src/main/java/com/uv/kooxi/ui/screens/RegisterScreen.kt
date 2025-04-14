@@ -21,11 +21,9 @@ fun RegisterScreen(
     var confirmPassword by remember { mutableStateOf("") }
     var localError by remember { mutableStateOf("") }
 
-    // Instancia el ViewModel para el registro
     val viewModel: RegisterScreenViewModel = viewModel()
     val registrationState by viewModel.registrationState.collectAsState()
 
-    // Navega a las pantallas cuando el registro es exitoso
     LaunchedEffect(registrationState) {
         if (registrationState is RegisterState.Success) {
             onNavigateToLogin()
@@ -33,7 +31,6 @@ fun RegisterScreen(
         }
     }
 
-    // Determina el mensaje de error a mostrar: error local o error desde el ViewModel
     val errorMessageToShow = if (localError.isNotEmpty()) {
         localError
     } else if (registrationState is RegisterState.Error) {
@@ -66,7 +63,7 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))
-            // Campo para email
+
             OutlinedTextField(
                 value = email,
                 onValueChange = {
@@ -77,7 +74,7 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))
-            // Campo para contraseña
+
             OutlinedTextField(
                 value = password,
                 onValueChange = {
@@ -89,7 +86,7 @@ fun RegisterScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))
-            // Campo para confirmar contraseña
+
             OutlinedTextField(
                 value = confirmPassword,
                 onValueChange = {

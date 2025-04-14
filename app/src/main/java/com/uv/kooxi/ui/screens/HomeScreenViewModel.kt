@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-// Nuevos imports para OpenAI (OkHttp y JSON)
 import kotlinx.coroutines.Dispatchers
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -48,7 +47,6 @@ class HomeScreenViewModel(application: Application) : AndroidViewModel(applicati
         _articleContent.value = newContent
     }
 
-    // Estado para la respuesta de OpenAI
     private val _openAiResponse = MutableStateFlow("")
     val openAiResponse = _openAiResponse.asStateFlow()
 
@@ -120,7 +118,6 @@ class HomeScreenViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    // Función para cerrar sesión utilizando la lógica de la clase Usuario
     fun logout() {
         usuarioRepo.cerrarSesion()
     }

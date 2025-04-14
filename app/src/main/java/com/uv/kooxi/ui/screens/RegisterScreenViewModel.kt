@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-// Define los posibles estados del registro
 sealed class RegisterState {
     object Idle : RegisterState()
     object Loading : RegisterState()
@@ -20,11 +19,9 @@ class RegisterScreenViewModel : ViewModel() {
 
     private val usuarioRepository = Usuario()
 
-    // Estado privado mutable y su contraparte inmutable para observar en la UI
     private val _registrationState = MutableStateFlow<RegisterState>(RegisterState.Idle)
     val registrationState: StateFlow<RegisterState> = _registrationState
 
-    // Función para registrar un nuevo usuario, ahora con el parámetro adicional 'username'
     fun register(email: String, password: String, username: String) {
         _registrationState.value = RegisterState.Loading
 
