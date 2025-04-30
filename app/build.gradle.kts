@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.uv.kooxi"
+    namespace = "com.uv.sanuvia"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.uv.kooxi"
+        applicationId = "com.uv.sanuvia"
         minSdk = 29
         targetSdk = 35
         versionCode = 1
@@ -21,7 +21,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isShrinkResources = true
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -67,6 +68,19 @@ dependencies {
     implementation(libs.accompanist.pager)
     implementation(libs.accompanist.pager.indicators)
     implementation ("com.google.android.gms:play-services-location:21.3.0")
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
+    implementation ("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+    implementation ("io.coil-kt:coil-compose:2.6.0")
+
+    // Import the BoM for the Firebase platform
+    implementation(platform("com.google.firebase:firebase-bom:33.12.0")) // Reemplaza con la última versión
+
+    implementation("com.google.firebase:firebase-appcheck:17.1.2") // O la versión más reciente
+
+    implementation("com.google.firebase:firebase-appcheck-playintegrity:17.1.2") // O la versión más reciente
+
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-storage-ktx")
 
 
 }
