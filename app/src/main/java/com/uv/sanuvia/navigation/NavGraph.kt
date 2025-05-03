@@ -34,12 +34,21 @@ fun NavGraph(isUserLoggedIn: Boolean) {
             )
 
         }
-        composable("editProfile") {
+        composable("editProfile") { // Asumiendo que esta es tu ruta
             UserEditScreen(
-                onNavigateToLogin = {navController.navigate("login")}
-
+                onNavigateToLogin = {
+                    // Lógica para ir a Login (ej: borrar backstack e ir a login)
+                    navController.navigate("login") {
+                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+                onNavigateToHome = {
+                    // Lógica para regresar (ej: simplemente volver atrás en la pila)
+                    navController.popBackStack()
+                }
+                // viewModel se obtiene por defecto con viewModel()
             )
-            
         }
     }
 }

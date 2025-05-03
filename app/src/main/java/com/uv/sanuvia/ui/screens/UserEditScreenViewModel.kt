@@ -2,6 +2,7 @@ package com.uv.sanuvia.ui.screens
 
 import android.net.Uri
 import android.util.Log
+import androidx.compose.material.CircularProgressIndicator
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.ktx.auth
@@ -144,8 +145,9 @@ class UserEditScreenViewModel : ViewModel() {
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
+                        photoUrl = auth.currentUser?.photoUrl.toString(),
                         isLoading = false,
-                        error = "Los cambios se verán reflejados al recargar esta página"
+                        successMessage = "Foto de perfil actualizada."
                     )
                 }
                 Log.e("Error de foto", {e.localizedMessage}.toString())

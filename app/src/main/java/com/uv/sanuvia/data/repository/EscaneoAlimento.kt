@@ -1,50 +1,20 @@
-package com.uv.sanuvia.data.repository
+package com.uv.sanuvia.data.repository // O donde tengas tus modelos
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import java.time.LocalDateTime
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentId // Para obtener el ID automático de Firestore
+import com.google.firebase.firestore.PropertyName
+import com.google.firebase.firestore.ServerTimestamp // Para fechas automáticas del servidor
+
+data class EscaneoAlimento(
+    @DocumentId // Anotación para que Firestore ponga aquí el ID del documento
+    val idEscaneo: String = "", // Usamos String para el ID de Firestore
 
 
-class EscaneoAlimento(private val usuario: Usuario) {
+    val urlFoto: String = "", // Almacenamos la URL de Storage, no la foto en sí
 
-    var idEscaneo: Int = 0
-        private set
+    @ServerTimestamp // Firestore pondrá la fecha del servidor automáticamente al crear
+    val fechaHora: Timestamp? = null, // Nullable hasta que el servidor la establezca
+    val resultado: String = "", // El texto de la IA
 
-    var foto: String? = null
-        private set
-
-    var fechaHora: LocalDateTime? = null
-        private set
-
-    var resultado: String? = null
-        private set
-
-    private val ia = InteligenciaArtificial()
-
-    /**
-     * Inicia el proceso de escaneo: almacena la imagen y fecha,
-     * y solicita información a la IA en un hilo de fondo.
-     */
-    fun scanAlimento(base64Image: String): LiveData<String?> {
-        val liveData = MutableLiveData<String?>()
-        foto = base64Image
-        fechaHora = LocalDateTime.now()
-
-        Thread {
-            try {
-                val res = ia.generarInformacion(base64Image)
-                resultado = res
-                liveData.postValue(res)
-            } catch (e: Exception) {
-                liveData.postValue(null)
-            }
-        }.start()
-
-        return liveData
-    }
-
-    /**
-     * Devuelve el resultado del último escaneo.
-     */
-    fun mostrarResultado(): String? = resultado
-}
+    val idUsuario: String = "" // El ID del usuario de Firebase Auth
+)

@@ -1,3 +1,5 @@
+
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,11 +7,16 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+
 android {
+
+
+    android.buildFeatures.buildConfig = true
     namespace = "com.uv.sanuvia"
     compileSdk = 35
 
     defaultConfig {
+        buildConfigField("String", "OPENAI_KEY", "\"${project.findProperty("OPENAI_KEY") ?: ""}\"")
         applicationId = "com.uv.sanuvia"
         minSdk = 29
         targetSdk = 35
@@ -81,6 +88,7 @@ dependencies {
 
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-storage-ktx")
+    implementation("androidx.compose.material:material-icons-extended:1.7.8")
 
 
 }
