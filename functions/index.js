@@ -1,260 +1,339 @@
-const functions = require("firebase-functions");
+/* eslint-disable object-curly-spacing */
+/* eslint-disable require-jsdoc */ // O añade comentarios JSDoc
+const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
-const axios = require("axios"); // Para llamar a OpenAI
-// eslint-disable-next-line max-len
-const {SecretManagerServiceClient} = require("@google-cloud/secret-manager");
+const axios = require("axios");
+const {
+  SecretManagerServiceClient,
+} = require("@google-cloud/secret-manager"); // Dividido
+const util = require("util");
 
+// Inicializa Firebase Admin SDK (solo una vez)
 if (admin.apps.length === 0) {
   admin.initializeApp();
 }
-
 const db = admin.firestore();
-
+const storage = admin.storage(); // Para admin.storage().bucket()
 const secretManagerClient = new SecretManagerServiceClient();
 
-// --- Función Auxiliar para obtener API Key (Reutilizada) ---
+// --- Función Auxiliar para obtener API Key ---
 /**
  * Obtiene la API Key de OpenAI desde Secret Manager.
- * @async
- * @throws {functions.https.HttpsError} Si no se puede obtener la clave.
- * @return {Promise<string>} La API Key de OpenAI.
+ * @return {Promise<string>} La clave API.
+ * @throws {HttpsError} Si no se puede obtener la clave.
  */
 async function getOpenAiApiKey() {
-  const name = "projects/anfeca2025/secrets/OPENAI_API_KEY/versions/latest";
+  const name = "projects/379146167730/secrets/OPENAI_API_KEY/versions/1";
+  console.log(`Accediendo al secreto: ${name}`);
   try {
     const [version] = await secretManagerClient.accessSecretVersion({name});
     const payload = version.payload.data.toString("utf8");
     if (!payload) {
-      // eslint-disable-next-line max-len
       throw new Error("Secret Manager devolvió una API Key vacía.");
     }
     return payload;
   } catch (error) {
-    // eslint-disable-next-line max-len
-    console.error("Error crítico al acceder a Secret Manager:", error);
-    // Lanza un error que la función callable pueda manejar
-    throw new functions.https.HttpsError(
+    console.error(
+        "Error crítico al acceder a Secret Manager:",
+        error.message || error,
+    );
+    throw new HttpsError(
         "internal",
         "No se pudo obtener la configuración segura.",
-        error.message, // Incluye el mensaje original para logs
+        error.message,
     );
   }
 }
+
+// --- Función Auxiliar para Normalizar ID ---
 /**
- * Normaliza una cadena de ubicación para usarla como ID.
- * @param {string | undefined} locationString La cadena de ubicación.
- * @return {string | null} El ID normalizado o null si la entrada no es válida.
+ * Normaliza un string para usarlo como ID de Firestore/Storage.
+ * @param {string} inputString El string original.
+ * @return {string|null} El string normalizado o null si entrada inválida.
  */
-function normalizeLocationId(locationString) {
-  if (!locationString || typeof locationString !== "string") return null;
-  return locationString
+function normalizeId(inputString) {
+  if (!inputString || typeof inputString !== "string") return null;
+  return inputString
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "*") // Reemplaza no alfanuméricos con *
-      .replace(/\*+/g, "*") // Colapsa múltiples * a uno solo
-      .replace(/^\*+|\*+$/g, ""); // Quita * al inicio/final
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "");
 }
 
-// --- Cloud Function Principal (HTTPS Callable) ---
-exports.obtenerCultivosPorUbicacion = functions.https.onCall(
-    async (data, context) => {
-      const ubicacionOriginal = data.ubicacion;
+// --- Cloud Function Principal (HTTPS Callable - 2ª Generación) ---
+exports.obtenerCultivosPorUbicacion = onCall(
+    { // Opciones de ejecución para 2ª gen
+      timeoutSeconds: 300, // 5 minutos
+      memory: "1GiB", // Nota: "GiB" para 2ª gen
+    },
+    async (request) => {
+      console.log(
+          "Función (v2) iniciada. Datos recibidos:",
+          util.inspect(request.data, {depth: 3}),
+      );
+
+      const ubicacionOriginal = request.data?.ubicacion;
+
+      console.log(
+          "Valor extraído de request.data.ubicacion:",
+          ubicacionOriginal,
+      );
+      console.log("Tipo extraído:", typeof ubicacionOriginal);
 
       // 1. Validar Input
-      if (!ubicacionOriginal || typeof ubicacionOriginal !== "string") {
-        console.error("Input inválido:", data);
-        throw new functions.https.HttpsError(
+      const isValidInput = ubicacionOriginal &&
+                           typeof ubicacionOriginal === "string" &&
+                           ubicacionOriginal.trim() !== "";
+      if (!isValidInput) {
+        console.error(
+            "VALIDACIÓN FALLIDA (v2):",
+            util.inspect(request.data, {depth: 3}),
+        );
+        throw new HttpsError(
             "invalid-argument",
-            "La función debe llamarse con un argumento \"ubicacion\" " +
-            "de tipo string.",
+            "Argumento \"ubicacion\" inválido o ausente en request.data.",
         );
       }
-      // eslint-disable-next-line max-len
-      console.log(`Recibida solicitud para ubicación: "${ubicacionOriginal}"`);
+      console.log(`Validación pasada (v2): "${ubicacionOriginal}"`);
 
       // 2. Normalizar ID
-      const idNormalizado = normalizeLocationId(ubicacionOriginal);
-      if (!idNormalizado) {
-        // eslint-disable-next-line max-len
-        console.error(`No se pudo normalizar la ubicación: "${ubicacionOriginal}"`);
-        throw new functions.https.HttpsError(
-            "invalid-argument",
-            "Formato de ubicación no válido.",
+      const idUbicacionNorm = normalizeId(ubicacionOriginal);
+      if (!idUbicacionNorm) {
+        console.error(`No se pudo normalizar (v2): "${ubicacionOriginal}"`);
+        throw new HttpsError(
+            "invalid-argument", "Formato de ubicación no válido.",
         );
       }
-      console.log(`ID Normalizado: ${idNormalizado}`);
+      console.log(`ID Ubicación Normalizado (v2): ${idUbicacionNorm}`);
 
       // 3. Consultar Caché (Firestore)
-      // eslint-disable-next-line max-len
-      const docRef = db.collection("ubicacionesCultivos").doc(idNormalizado);
+      const docRef = db.collection("ubicacionesCultivos").doc(idUbicacionNorm);
       try {
         const docSnap = await docRef.get();
 
         if (docSnap.exists) {
-          console.log(`Cache hit para: ${idNormalizado}`);
+          console.log(`Cache hit para (v2): ${idUbicacionNorm}`);
           const datosExistentes = docSnap.data();
-          // Asegurarse que el campo 'cultivos' existe y es un array
           if (datosExistentes && Array.isArray(datosExistentes.cultivos)) {
-            // eslint-disable-next-line max-len
-            console.log(`Devolviendo ${datosExistentes.cultivos.length} cultivos desde caché.`);
-            return {cultivos: datosExistentes.cultivos};
+            const todosTienenImagen =
+              datosExistentes.cultivos.length === 0 ||
+              datosExistentes.cultivos.every(
+                  (c) => c && typeof c.urlImagen === "string" && c.urlImagen,
+              );
+            if (todosTienenImagen) {
+              console.log(
+                  `Devolviendo ${datosExistentes.cultivos.length} cultivos`,
+                  "(v2 caché).",
+              );
+              return {cultivos: datosExistentes.cultivos};
+            } else {
+              console.warn(
+                  `CacheHit ${idUbicacionNorm} (v2), faltan URLs.`,
+                  "Regenerando...",
+              );
+            }
           } else {
             console.warn(
-                `Documento ${idNormalizado} existe pero sin campo ` +
-                "'cultivos' válido. Consultando OpenAI.",
+                `Doc ${idUbicacionNorm} (v2) existe pero 'cultivos'`,
+                "inválido. Regenerando...",
             );
           }
-        } else {
-          // eslint-disable-next-line max-len
-          console.log(`Cache miss para: ${idNormalizado}. Consultando OpenAI...`);
+        }
+        console.log(
+            `Cache miss o datos incompletos para ${idUbicacionNorm} (v2).`,
+        );
 
-          // 4. Si no existe (Cache Miss), llamar a OpenAI
-          // Obtenemos la API Key (el try/catch inútil fue removido)
-          // El catch general de la función manejará los errores de aquí.
-          const apiKey = await getOpenAiApiKey();
+        // 4. OBTENER NOMBRES Y DESCRIPCIONES (GPT)
+        const apiKey = await getOpenAiApiKey();
+        const promptDescripcionesLines = [
+          "Eres un asistente experto meastro en agricultura .",
+          `Para la ubicación "${ubicacionOriginal}", lista los 7-10 cultivos`,
+          "agrícolas más comunes y relevantes. Para cada uno, da su nombre",
+          "común y una robusta descripción sobre su",
+          "características en la zona y pasos puntuales",
+          "detallando cada paso punto a punto para cultivar.",
+          "Tutorial completo y util, al menos 3000 caracteres por cultivo",
+          "IMPORTANTE: Formatea tu respuesta EXCLUSIVAMENTE como un array",
+          "JSON válido. Cada elemento debe ser un objeto con claves",
+          "\"nombre\" (string) y \"descripcion\" (string).",
+          "Ejemplo: [{\"nombre\":\"CultivoA\",\"descripcion\":\"Desc A.\"}]",
+        ];
+        const promptDescripciones = promptDescripcionesLines.join("\n").trim();
 
-          // 4a. Preparar Prompt para OpenAI (¡Pidiendo JSON!)
-          // Prompt dividido en líneas para cumplir max-len
-          const prompt = `
-Eres un asistente experto en agricultura y botánica.
-Para la ubicación geográfica "${ubicacionOriginal}", lista los 5-7
-cultivos agrícolas más comunes y relevantes.
-Para cada cultivo, proporciona su nombre común y una breve
-descripción (1-2 frases enfocadas en su relevancia o
-características principales en esa zona).
-IMPORTANTE: Formatea tu respuesta EXCLUSIVAMENTE como un array JSON
-válido. Cada elemento del array debe ser un objeto con las claves
-"nombre" (string) y "descripcion" (string).
-Ejemplo de formato esperado:
-[
-  {"nombre": "Cultivo A", "descripcion": "Descripción breve de A."},
-  {"nombre": "Cultivo B", "descripcion": "Descripción breve de B."}
-]
-Si no encuentras información específica o la ubicación no es válida
-para agricultura, devuelve un array JSON vacío: [].
-`.trim();
-
-          const openAiUrl = "https://api.openai.com/v1/chat/completions";
-          const headers = {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          };
-          const bodyJson = {
-            // Modelo - comentario dividido
-            model: "gpt-4o-mini", // O "gpt-3.5-turbo" si prefieres
-            // (más rápido, menos capaz)
-            messages: [
-              // {role: "system", content: "Eres un asistente agrícola."},
-              {role: "user", content: prompt},
-            ],
-            temperature: 0.5, // Un poco menos creativo para datos
-            max_tokens: 400, // Ajusta según necesidad
-            // response_format - comentario dividido
-            // response_format: { type: "json_object" }
-            // Descomenta si usas GPT-4 Turbo o posterior que lo soporte bien
-          };
-
-          // 4b. Realizar la llamada a OpenAI
-          let openAiResponseData;
-          try {
-            const response = await axios.post(openAiUrl, bodyJson, {headers});
-            openAiResponseData = response.data;
-          } catch (apiError) {
-            // Mensaje de error dividido
-            const errorDetails = apiError.response?.data || apiError.message;
-            console.error("Error en API OpenAI:", errorDetails);
-            throw new functions.https.HttpsError(
-                "unavailable", // O 'internal'
-                "Error al contactar al servicio de IA.",
-                apiError.message,
+        let cultivosBase = [];
+        try {
+          console.log("Llamando a GPT para descripciones (v2)...");
+          const responseGpt = await axios.post(
+              "https://api.openai.com/v1/chat/completions",
+              {
+                model: "gpt-4o-mini",
+                messages: [{role: "user", content: promptDescripciones}],
+                temperature: 0.5,
+                max_tokens: 3200,
+              },
+              {headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              }},
+          );
+          const choiceGpt = responseGpt.data?.choices?.[0];
+          if (choiceGpt?.message?.content) {
+            let contentGpt = choiceGpt.message.content.trim();
+            const jsonMatch =
+              contentGpt.match(/```json\s*([\s\S]*?)\s*```/) ||
+              contentGpt.match(/```\s*([\s\S]*?)\s*```/);
+            if (jsonMatch && jsonMatch[1]) contentGpt = jsonMatch[1].trim();
+            else if (!contentGpt.startsWith("[") || !contentGpt.endsWith("]")) {
+              console.warn("Respuesta GPT (v2) no parece JSON directo.");
+            }
+            cultivosBase = JSON.parse(contentGpt);
+            if (!Array.isArray(cultivosBase)) cultivosBase = [];
+            cultivosBase = cultivosBase.filter(
+                (c) => c && typeof c.nombre === "string" &&
+                       typeof c.descripcion === "string",
             );
-          }
-
-          // 4c. Procesar Respuesta de OpenAI
-          let cultivosParseados = [];
-          // eslint-disable-next-line max-len
-          if (openAiResponseData && openAiResponseData.choices && openAiResponseData.choices.length > 0) {
-            // eslint-disable-next-line max-len
-            const content = openAiResponseData.choices[0].message.content.trim();
-            console.log("Respuesta cruda de OpenAI:", content);
-            try {
-              cultivosParseados = JSON.parse(content);
-              if (!Array.isArray(cultivosParseados)) {
-                // eslint-disable-next-line max-len
-                console.error("OpenAI no devolvió un array JSON válido:", content);
-                cultivosParseados = [];
-              }
-              // Filtro dividido en líneas
-              cultivosParseados = cultivosParseados.filter((item) =>
-                item &&
-                typeof item.nombre === "string" &&
-                typeof item.descripcion === "string",
-              );
-            } catch (parseError) {
-              // Mensaje de error dividido
-              // eslint-disable-next-line max-len
-              console.error("Error parseando JSON de OpenAI:", parseError);
-              console.error("Contenido recibido:", content);
-              cultivosParseados = [];
-            }
-          } else {
-            // eslint-disable-next-line max-len
-            console.error("Respuesta inesperada o vacía de OpenAI:", openAiResponseData);
-          }
-
-          // 5. Guardar en Firestore (Actualizar Caché)
-          if (cultivosParseados.length > 0) {
-            const datosParaGuardar = {
-              nombreOriginal: ubicacionOriginal,
-              cultivos: cultivosParseados,
-              fechaConsulta: admin.firestore.FieldValue.serverTimestamp(),
-            };
-            try {
-              await docRef.set(datosParaGuardar);
-              // eslint-disable-next-line max-len
-              console.log(`Datos guardados en caché para: ${idNormalizado}`);
-            } catch (dbError) {
-              // eslint-disable-next-line max-len
-              console.error(`Error guardando en Firestore para ${idNormalizado}:`, dbError);
-            }
-          } else {
-            // Mensaje de log dividido
             console.log(
-                `No se obtuvieron datos válidos de OpenAI para ` +
-                `${idNormalizado}, no se guarda en caché.`,
+                `GPT (v2) devolvió ${cultivosBase.length} cultivos base.`,
             );
-            // Comentario largo dividido
-            // Considera guardar un registro vacío o con error
-            // si quieres evitar reintentos constantes
-            // await docRef.set({
-            //   nombreOriginal: ubicacionOriginal,
-            //   cultivos: [],
-            //   fechaConsulta: admin.firestore.FieldValue.serverTimestamp(),
-            //   error: "No data from AI"
-            // });
           }
+        } catch (error) {
+          console.error(
+              "Error obteniendo descripciones de GPT (v2):",
+              error,
+          );
+          throw new HttpsError(
+              "unavailable",
+              "Error al obtener datos base de cultivos (v2).",
+          );
+        }
 
-          // 6. Devolver Respuesta a la App
-          // eslint-disable-next-line max-len
-          console.log(`Devolviendo ${cultivosParseados.length} cultivos obtenidos de OpenAI.`);
-          return {cultivos: cultivosParseados};
-        } // Fin del bloque else (cache miss)
+        if (cultivosBase.length === 0) {
+          console.log(
+              "No se obtuvieron cultivos base (v2). Guardando vacío.",
+          );
+          await docRef.set({
+            nombreOriginal: ubicacionOriginal,
+            cultivos: [],
+            fechaConsulta: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          return {cultivos: []};
+        }
+
+        // 5. GENERAR/SUBIR IMAGEN PARA CADA CULTIVO
+        const bucket = storage.bucket(); // Bucket por defecto
+        const cultivosFinales = [];
+        // URL por defecto si falla DALL-E (ajusta el nombre y token)
+        const defaultImageUrl = "https://firebasestorage.googleapis.com"+
+                                "/v0/b/anfeca2025.firebasestorage.app/o/"+
+                                "imagenes_cultivos%2Fdefault%2F20250509_2"+
+                                "238_Plantas%20Hiperealistas%20Coloridas_"+
+                                "simple_compose_01jtw7rgqvfkc8naa5j2z56h1k.png"+
+                                "?alt=media&token=331db839-7710-4755-b386-"+
+                                "b145b7bcf26c";
+
+        await Promise.all(
+            cultivosBase.map(async (cultivoBase) => {
+              let urlImagenCultivo = null;
+              const nombreCultivoNorm = normalizeId(cultivoBase.nombre);
+              if (!nombreCultivoNorm) {
+                console.warn(
+                    `No se normalizó nombre (v2): ${cultivoBase.nombre}`,
+                );
+                cultivosFinales.push({
+                  ...cultivoBase,
+                  urlImagen: defaultImageUrl,
+                });
+                return;
+              }
+              try {
+                console.log(
+                    `Procesando imagen para (v2): ${cultivoBase.nombre}`,
+                );
+                const promptImagen =
+                  `Fotografia real de planta de ${cultivoBase.nombre}` +
+                  ", imagen llamativa, estimulate, perfecta";
+                const responseDalle = await axios.post(
+                    "https://api.openai.com/v1/images/generations",
+                    {
+                      model: "dall-e-3",
+                      prompt: promptImagen,
+                      n: 1,
+                      size: "1024x1024",
+                      response_format: "b64_json",
+                    },
+                    {headers: {
+                      "Authorization": `Bearer ${apiKey}`,
+                      "Content-Type": "application/json",
+                    }},
+                );
+                const base64ImageData =
+                  responseDalle.data?.data?.[0]?.b64_json;
+                if (base64ImageData) {
+                  const imageBuffer = Buffer.from(base64ImageData, "base64");
+                  const filePath =
+                    `imagenes_cultivos/${idUbicacionNorm}/` +
+                    `${nombreCultivoNorm}.png`;
+                  const file = bucket.file(filePath);
+                  await file.save(imageBuffer, {
+                    metadata: {contentType: "image/png"},
+                    public: true,
+                  });
+                  urlImagenCultivo = file.publicUrl();
+                  console.log(
+                      `Imagen subida (v2) para ${cultivoBase.nombre}`,
+                  );
+                } else {
+                  console.warn(
+                      `No b64_json DALL-E (v2) para ${cultivoBase.nombre}`,
+                  );
+                  urlImagenCultivo = defaultImageUrl;
+                }
+              } catch (error) {
+                console.error(
+                    `Error img/upload (v2) para ${cultivoBase.nombre}:`,
+                    error.response?.data || error.message,
+                );
+                urlImagenCultivo = defaultImageUrl;
+              }
+              cultivosFinales.push({
+                nombre: cultivoBase.nombre,
+                descripcion: cultivoBase.descripcion,
+                urlImagen: urlImagenCultivo, // Será la generada o la default
+              });
+            }),
+        );
+
+        // 6. GUARDAR EN FIRESTORE
+        const datosParaGuardarFinal = {
+          nombreOriginal: ubicacionOriginal,
+          cultivos: cultivosFinales,
+          fechaConsulta: admin.firestore.FieldValue.serverTimestamp(),
+        };
+        await docRef.set(datosParaGuardarFinal);
+        console.log(
+            "Datos finales con imágenes guardados (v2) para: " +
+            `${idUbicacionNorm}`,
+        );
+
+        // 7. DEVOLVER A LA APP
+        return {cultivos: cultivosFinales};
       } catch (error) {
-        // Mensaje de error dividido
         console.error(
-            `Error procesando ubicación ${ubicacionOriginal} ` +
-            `(ID: ${idNormalizado}):`,
+            `Error GRAL (v2) procesando ${ubicacionOriginal} ` +
+            `(ID: ${idUbicacionNorm}):`,
             error,
         );
-        // Asegúrate de que el error lanzado sea HttpsError si no lo es ya
-        if (error instanceof functions.https.HttpsError) {
+        if (error instanceof HttpsError) {
           throw error;
         } else {
-          // Mensaje de error dividido
-          throw new functions.https.HttpsError(
+          throw new HttpsError(
               "internal",
-              "Ocurrió un error inesperado procesando la solicitud.",
+              "Ocurrió un error inesperado (v2).",
               error.message,
           );
         }
       }
-    });
+    },
+); // Fin exports.obtenerCultivosPorUbicacion (v2)
+
+// Asegúrate de tener una línea en blanco al final del archivo
