@@ -1,6 +1,5 @@
 package com.uv.sanuvia.data.repository
 
-import com.google.firebase.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -38,7 +37,16 @@ class InteligenciaArtificial(
             - Descripción nutricional (macro y micronutrientes más relevantes)
             - Calorías aproximadas por porción
             - Recomendaciones de consumo o alertas (alergias, exceso de azúcares, etc.)
-            Responde en un párrafo claro para el usuario final.
+            Trata de inferir cuando la imagen no sea muy clara, 
+            solo cuando realmente no se tenga una vista clara devuelve un mensaje de error.
+            Nunca dejes ver que se esta interactuando con un ChatBot, eres parte de una app
+            Evita mensajes de invitación para volver a mandar la imagen, mensajes de asistente,
+            Si la imagen no es correcta de acuerdo al contexto de la app, el mensaje no debe ser mayor a 10 palabras,
+            de igual forma si no se detecta correctamente los alimentos/bedidas en la foto
+            Responde en un párrafo claro para el usuario final. Solo recibe imagenes de alimentos, 
+            solo se accesible con imagenes de plantas, tratandose de ellas, da su nombre, descripcion,
+            y pasos de cultivo y cuidado.
+            El texto que debes de volver, debe ser texto simple. sin Markdowns
         """.trimIndent()
 
         // Construimos el JSON conforme a la especificación de vision

@@ -1,8 +1,13 @@
 package com.uv.sanuvia.ui.screens.home
 
-
+import android.service.autofill.OnClickAction
+import android.util.Log // Importa Log
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn // Asegúrate que está si lo usas en la página
+import androidx.compose.foundation.lazy.items // Asegúrate que está si lo usas en la página
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -10,18 +15,20 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+// import androidx.compose.runtime.LaunchedEffect // Ya no es necesario para el painter aquí
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter // Para el tipo en onState
+// import coil.compose.rememberAsyncImagePainter // Ya no creamos el painter manualmente aquí
 import coil.request.ImageRequest
-import com.uv.sanuvia.ui.screens.HomeScreenState
+import com.uv.sanuvia.ui.screens.HomeScreenState // Asegúrate que la ruta es correcta
+// Asegúrate que este import apunta a tu CultivoInfo.kt con el campo urlImagen
 import com.uv.sanuvia.data.repository.CultivoInfo
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 
 @Composable
 fun UbicacionCultivosPage(
@@ -36,10 +43,6 @@ fun UbicacionCultivosPage(
             .verticalScroll(rememberScrollState()), // Scroll para toda la página
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            "Cultivos por Ubicación",
-            style = MaterialTheme.typography.headlineSmall
-        )
         Spacer(modifier = Modifier.height(16.dp))
 
         // --- Mostrar el String de la Dirección ---
@@ -62,7 +65,7 @@ fun UbicacionCultivosPage(
         } else if (uiState.direccionUsuario != null) {
             Text(
                 text = "Cultivos comunes en: ${uiState.direccionUsuario}",
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleSmall
             )
             // --- Mostrar Cultivos ---
             if (uiState.isCultivosLoading) {
@@ -85,11 +88,13 @@ fun UbicacionCultivosPage(
                 Text("No se encontraron cultivos para esta área.")
             } else {
                 Spacer(modifier = Modifier.height(16.dp))
-                // Usamos Column en lugar de LazyColumn porque toda la página ya es scrollable
-                // Si esperas MUCHOS cultivos, podrías necesitar un LazyColumn con altura fija.
-                uiState.cultivos.forEach { cultivo ->
-                    CultivoItemConImagen(cultivo = cultivo) // Reutiliza el Composable
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                Column {
+                    uiState.cultivos.forEachIndexed { index, cultivo ->
+                        CultivoItemConImagen(cultivo = cultivo) // Llama al Composable corregido
+                        if (index < uiState.cultivos.size - 1) {
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        }
+                    }
                 }
             }
         } else {
@@ -106,38 +111,59 @@ fun UbicacionCultivosPage(
 
 @Composable
 fun CultivoItemConImagen(cultivo: CultivoInfo, modifier: Modifier = Modifier) {
+    // Log para ver la URL que se está intentando cargar
+    Log.d("CultivoItemView", "Cultivo: ${cultivo.nombre}, URL Imagen: ${cultivo.urlImagen}")
+
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.Top // Para que el texto no se centre si la imagen es alta
     ) {
+
+
+
+
+        // --- CORRECCIÓN AQUÍ: Usar AsyncImage con 'model' y 'onState' ---
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
-                .data(cultivo.urlImagen)
+                .data(cultivo.urlImagen) // La URL de la imagen del cultivo
                 .crossfade(true)
-                // .placeholder(R.drawable.ic_placeholder_crop)
-                // .error(R.drawable.ic_error_crop)
                 .build(),
             contentDescription = "Imagen de ${cultivo.nombre}",
             contentScale = ContentScale.Crop,
             modifier = Modifier
-                .size(72.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .size(130.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            // Callback para observar el estado de la carga
+            onState = { state ->
+                Log.d("CultivoItemView", "Cultivo: ${cultivo.nombre}, Estado de AsyncImage: $state")
+                if (state is AsyncImagePainter.State.Error) {
+                    Log.e(
+                        "CultivoItemView",
+                        "Error al cargar imagen para ${cultivo.nombre}: ${state.result.throwable.localizedMessage}",
+                        state.result.throwable
+                    )
+                }
+            }
         )
+
         Spacer(modifier = Modifier.width(16.dp))
+
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = cultivo.nombre,
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleMedium,
             )
+
             Spacer(modifier = Modifier.height(4.dp))
+
+
             Text(
-                text = cultivo.descripcion,
-                style = MaterialTheme.typography.bodyMedium
-                // Quita maxLines si quieres ver toda la descripción
+            text = cultivo.descripcion,
+            style = MaterialTheme.typography.bodyMedium
             )
         }
+
     }
 }

@@ -12,7 +12,15 @@ import android.content.Context
 import android.location.Location
 import androidx.annotation.RequiresPermission
 import com.google.android.gms.location.LocationServices
-
+import android.location.Address // Importa Address
+import android.location.Geocoder // Importa Geocoder
+import android.os.Build // Necesario para la versión del Geocoder
+import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import java.util.Locale
+import kotlin.Result
 class Usuario {
 
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
@@ -127,19 +135,75 @@ class Usuario {
     }
 
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
-    suspend fun obtenerUbicacionUsuario(context: Context): Result<Location> {
+    suspend fun obtenerUbicacionUsuario(context: Context): Result<String> = withContext(Dispatchers.IO) {
         // Obtiene el FusedLocationProviderClient
         val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-        return try {
-            // Obtiene la última ubicación disponible de forma asíncrona
-            val location = fusedLocationClient.lastLocation.await()
+        try {
+            // 1. Obtiene la última ubicación disponible (igual que antes)
+            val location: Location? = fusedLocationClient.lastLocation.await()
+
             if (location != null) {
-                Result.success(location)
+                // 2. Si tenemos ubicación, intentamos la Geocodificación Inversa
+                if (Geocoder.isPresent()) { // Verifica si Geocoder está disponible en el dispositivo
+                    val geocoder = Geocoder(context, Locale.getDefault())
+                    try {
+                        val addresses: List<Address>? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            // Usa la API asíncrona para Android 13 (Tiramisu) y superior (más complejo de implementar aquí, mostramos la síncrona por simplicidad)
+                            // TODO: Considerar implementar la versión con listener para API 33+ para evitar bloqueos si no se llama desde IO dispatcher
+                            geocoder.getFromLocation(location.latitude, location.longitude, 1) // Pide 1 resultado
+                        } else {
+                            // Usa la API síncrona (deprecated en API 33+) - ¡Asegúrate de llamar desde Dispatchers.IO!
+                            @Suppress("DEPRECATION")
+                            geocoder.getFromLocation(location.latitude, location.longitude, 1)
+                        }
+
+                        if (!addresses.isNullOrEmpty()) {
+                            val address = addresses[0] // Toma la primera dirección (la más probable)
+
+                            // 3. Construye el String con la dirección formateada
+                            // Puedes ajustar qué campos incluir y el formato
+                            val addressString = listOfNotNull(
+                                address.locality,       // Ciudad
+                                address.adminArea,      // Estado/Provincia
+                                address.countryName     // País
+                            ).joinToString(separator = ", ") // Une con ", "
+
+                            if (addressString.isNotBlank()) {
+                                Log.d("UsuarioRepo", "Dirección encontrada: $addressString")
+                                Result.success(addressString)
+                            } else {
+                                Log.w("UsuarioRepo", "Geocoder devolvió una dirección vacía.")
+                                // Devolvemos las coordenadas como fallback si no hay texto de dirección
+                                Result.success("Lat: ${location.latitude}, Lon: ${location.longitude}")
+                                // O puedes devolver un fallo específico: Result.failure(Exception("No se encontró nombre de ubicación"))
+                            }
+                        } else {
+                            Log.w("UsuarioRepo", "Geocoder no devolvió direcciones para las coordenadas.")
+                            // Devolvemos las coordenadas como fallback
+                            Result.success("Lat: ${location.latitude}, Lon: ${location.longitude}")
+                            // O puedes devolver un fallo específico: Result.failure(Exception("No se encontraron direcciones"))
+                        }
+                    } catch (e: Exception) { // Error durante la geocodificación
+                        Log.e("UsuarioRepo", "Error de Geocoder: ${e.message}", e)
+                        Result.failure(Exception("Error al obtener nombre de ubicación: ${e.localizedMessage}", e))
+                    }
+                } else {
+                    Log.w("UsuarioRepo", "Geocoder no está presente en este dispositivo.")
+                    // Devolvemos las coordenadas como fallback si no hay Geocoder
+                    Result.success("Lat: ${location.latitude}, Lon: ${location.longitude}")
+                    // O puedes devolver un fallo específico: Result.failure(Exception("Servicio de Geocoder no disponible"))
+                }
             } else {
-                Result.failure(Exception("No se pudo obtener la ubicación"))
+                // No se pudo obtener la ubicación inicial
+                Log.w("UsuarioRepo", "No se pudo obtener la ubicación (lastLocation fue null)")
+                Result.failure(Exception("No se pudo obtener la ubicación inicial"))
             }
-        } catch (e: Exception) {
-            Result.failure(e)
-        } as Result<Location>
+        } catch (e: SecurityException) { // Error específico de permisos
+            Log.e("UsuarioRepo", "Error de permisos de ubicación: ${e.message}", e)
+            Result.failure(Exception("Permiso de ubicación denegado.", e))
+        } catch (e: Exception) { // Otros errores (ej: FusedLocationProvider)
+            Log.e("UsuarioRepo", "Error general al obtener ubicación: ${e.message}", e)
+            Result.failure(Exception("Error obteniendo ubicación: ${e.localizedMessage}", e))
+        }
     }
 }

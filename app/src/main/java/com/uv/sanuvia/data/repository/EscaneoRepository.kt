@@ -16,7 +16,6 @@ import com.google.firebase.auth.auth
 import com.google.firebase.firestore.ServerTimestamp
 
 class EscaneoRepository {
-
     private val storageRef: StorageReference = Firebase.storage.reference
     private val db: FirebaseFirestore = Firebase.firestore
     private val auth = Firebase.auth
