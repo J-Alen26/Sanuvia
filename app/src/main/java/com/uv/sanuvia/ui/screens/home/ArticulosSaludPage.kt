@@ -42,9 +42,11 @@ fun ArticulosSaludPage(
             .padding(horizontal = 8.dp, vertical = 16.dp) // Padding general
     ) {
         Text(
-            "Artículos de Salud",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(start = 8.dp, bottom = 16.dp) // Padding para el título
+            "Enfermedades en las infancias de México",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier
+                .padding(16.dp)
+                .align(Alignment.CenterHorizontally)
         )
 
         // Asumiendo que uiState.articles es la lista de EnfermedadInfantilModel

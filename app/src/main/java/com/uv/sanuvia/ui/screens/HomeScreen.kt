@@ -4,18 +4,21 @@ import android.Manifest
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
+import com.uv.sanuvia.R
 import com.uv.sanuvia.ui.screens.common.PagerIndicator
 import com.uv.sanuvia.ui.screens.common.ProfileAvatar
 import com.uv.sanuvia.ui.screens.home.ArticulosSaludPage
@@ -87,7 +90,15 @@ fun HomeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Sanuvia") },
+
+                title = {
+                    Text(
+                        "Sanuvia",
+                        style = MaterialTheme.typography.headlineLarge,
+
+                    )
+                        }
+                ,
                 actions = {
                     IconButton(onClick = { menuExpanded = true }) { ProfileAvatar() }
                     DropdownMenu(

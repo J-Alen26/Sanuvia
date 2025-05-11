@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Camera
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -137,13 +138,14 @@ fun EscaneoAlimentosPage(
                 takePictureLauncher.launch(uri)
             },
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
+                .size(120.dp)
+                .align(Alignment.BottomCenter)
+                .padding(24.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.CameraAlt,
+                imageVector = Icons.Default.Camera,
                 contentDescription = "Tomar foto de alimento"
             )
         }
-    } // Fin Box
+    }
 }
