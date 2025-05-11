@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -39,6 +38,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.uv.sanuvia.data.repository.EscaneoAlimento
 import java.text.SimpleDateFormat
 import java.util.Locale
+import androidx.compose.foundation.layout.widthIn // Para limitar el ancho de la burbuja
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.ui.text.style.TextAlign
+
+
 
 @Composable
 fun ProfileAvatar(
@@ -114,45 +119,107 @@ fun PagerIndicator(
     }
 }
 
+/**
+ * Composable para mostrar un ítem de escaneo de alimento con estilo de chat.
+ * Muestra la imagen del alimento y el resultado del análisis de la IA.
+ */
 @Composable
 fun EscaneoItem(escaneo: EscaneoAlimento, modifier: Modifier = Modifier) {
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 4.dp, horizontal = 8.dp)
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(escaneo.urlFoto)
-                .crossfade(true)
-                // .placeholder(R.drawable.placeholder_image_scan)
-                // .error(R.drawable.error_image_scan)
-                .build(),
-            contentDescription = "Imagen escaneada ${escaneo.idEscaneo}",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxWidth(0.3f)
-                .size(120.dp)
-                .clip(RoundedCornerShape(8.dp)) // Un poco más suave que CircleShape
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = escaneo.resultado,
-                style = MaterialTheme.typography.bodyMedium
-
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            val formattedDate = remember(escaneo.fechaHora) {
-                escaneo.fechaHora?.toDate()?.let {
-                    SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(it)
-                } ?: "Fecha desconocida"
+        // --- Burbuja para la Imagen Enviada (simulada) ---
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End // Alinea a la derecha
+        ) {
+            Card(
+                modifier = Modifier
+                    .widthIn(max = 300.dp) // Limita el ancho de la burbuja
+                    .padding(start = 40.dp), // Espacio a la izquierda
+                shape = RoundedCornerShape(
+                    topStart = 16.dp,
+                    topEnd = 4.dp, // Esquina menos redondeada para el "pico"
+                    bottomStart = 16.dp,
+                    bottomEnd = 16.dp
+                ),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(escaneo.urlFoto)
+                        .crossfade(true)
+                        // .placeholder(R.drawable.placeholder_scan_image)
+                        // .error(R.drawable.error_scan_image)
+                        .build(),
+                    contentDescription = "Imagen escaneada: ${escaneo.resultado.take(20)}",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                )
             }
-            Text(
-                text = formattedDate,
-                style = MaterialTheme.typography.labelSmall
-            )
         }
+
+        Spacer(modifier = Modifier.height(6.dp)) // Espacio entre burbujas (puede ser 4.dp o 6.dp)
+
+        // --- Burbuja para el Resultado de la IA (simulada) ---
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start // Alinea a la izquierda
+        ) {
+            Card(
+                modifier = Modifier
+                    .widthIn(max = 300.dp) // Limita el ancho
+                    .padding(end = 40.dp), // Espacio a la derecha
+                shape = RoundedCornerShape(
+                    topStart = 4.dp, // Esquina menos redondeada para el "pico"
+                    topEnd = 16.dp,
+                    bottomStart = 16.dp,
+                    bottomEnd = 16.dp
+                ),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = "Análisis Nutricional:",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = escaneo.resultado,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val formattedDate = remember(escaneo.fechaHora) {
+                        escaneo.fechaHora?.toDate()?.let {
+                            SimpleDateFormat(
+                                "dd/MM/yy HH:mm",
+                                Locale.getDefault()
+                            ).format(it)
+                        } ?: ""
+                    }
+                    if (formattedDate.isNotEmpty()) {
+                        Text(
+                            text = formattedDate,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline,
+                            textAlign = TextAlign.End,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        }
+        // --- CAMBIO AQUÍ: Aumentar el espacio inferior después de cada par de mensajes ---
+        Spacer(modifier = Modifier.height(20.dp)) // Antes era 12.dp
     }
 }

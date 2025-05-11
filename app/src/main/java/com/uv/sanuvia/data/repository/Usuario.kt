@@ -26,7 +26,7 @@ class Usuario {
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
 
     companion object {
-        const val DEFAULT_PROFILE_IMAGE_STORAGE_URI = "gs://anfeca2025.firebasestorage.app/profile_images/default/pexels-moh-adbelghaffar-771742.jpg"
+        const val DEFAULT_PROFILE_IMAGE_STORAGE_URI = "gs://anfeca2025.firebasestorage.app/profile_images/default/20250510_1730_Gato Tierno y Artístico_simple_compose_01jty8hhh0ecbajwqexbz74hgv.png"
     }
 
     private suspend fun getDefaultProfileImageUri(): Uri {

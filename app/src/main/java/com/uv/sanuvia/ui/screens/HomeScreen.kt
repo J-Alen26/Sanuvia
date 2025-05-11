@@ -29,7 +29,10 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     homeViewModel: HomeScreenViewModel = viewModel(),
     onLogout: () -> Unit = {},
-    onEditProfile: () -> Unit = {}
+    onEditProfile: () -> Unit = {},
+    onNavigateToArticuloDetail: (articuloId: String) -> Unit,
+    // --- NUEVO PARÁMETRO para la navegación al detalle del CULTIVO ---
+    onNavigateToCultivoDetail: (cultivoJson: String) -> Unit // Pasaremos el cultivo como JSON
 ) {
     val uiState by homeViewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -139,10 +142,28 @@ fun HomeScreen(
                     )
                     1 -> UbicacionCultivosPage(
                         uiState = uiState,
-                        onRetryFetchLocation = { homeViewModel.obtenerYGuardarDireccionUsuario() }
+                        onRetryFetchLocation = { homeViewModel.obtenerYGuardarDireccionUsuario() },
+                        // --- PASA LA LAMBDA DE NAVEGACIÓN ---
+                        onCultivoClick = { cultivo ->
+                            // Serializa el objeto CultivoInfo a JSON para pasarlo como argumento
+                            // Necesitarás una biblioteca como Gson o Kotlinx.Serialization
+                            // Ejemplo conceptual (necesitas implementar la serialización):
+                            // val cultivoJsonString = Gson().toJson(cultivo)
+                            // onNavigateToCultivoDetail(cultivoJsonString)
+
+                            // Por ahora, para simplificar, pasaremos solo el nombre
+                            // y asumiremos que la pantalla de detalle lo busca en la lista
+                            // o que el NavGraph lo hace.
+                            // Para una solución robusta, serializar o usar ViewModel compartido es mejor.
+                            Log.d("HomeScreen", "Cultivo clickeado: ${cultivo.nombre}")
+                            onNavigateToCultivoDetail(cultivo.nombre) // Pasando solo el nombre por ahora
+                        }
                     )
                     2 -> ArticulosSaludPage(
-                        uiState = uiState
+                        uiState = uiState,
+                        onArticuloClick = { articuloId ->
+                            onNavigateToArticuloDetail(articuloId)
+                        }
                     )
                 }
             }
@@ -154,6 +175,13 @@ fun HomeScreen(
 @Composable
 fun HomeScreenPreview() {
     MaterialTheme {
-        HomeScreen()
+        HomeScreen(
+            onNavigateToArticuloDetail = { /* No-op para preview */ },
+            modifier = TODO(),
+            homeViewModel = TODO(),
+            onLogout = TODO(),
+            onEditProfile = TODO(),
+            onNavigateToCultivoDetail = TODO()
+        )
     }
 }
