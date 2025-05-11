@@ -9,8 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Camera
-import androidx.compose.material.icons.filled.CameraAlt // Icono más estándar para cámara
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,13 +25,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun EscaneoAlimentosPage(
     uiState: HomeScreenState,
-    onTomarFoto: (Uri) -> Unit, // Lambda para pasar el Uri al ViewModel
+    onTomarFoto: (Uri) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var tempImageUri by remember { mutableStateOf<Uri?>(null) }
-    val lazyListState = rememberLazyListState() // Para controlar el scroll de la lista
-    val scope = rememberCoroutineScope() // Para lanzar coroutines (ej. para scroll)
+    val lazyListState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     val takePictureLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
@@ -40,37 +39,31 @@ fun EscaneoAlimentosPage(
         if (success) {
             tempImageUri?.let { uri ->
                 Log.d("EscaneoAlimentosPage", "Foto tomada: $uri")
-                onTomarFoto(uri) // Llama a la lambda con el Uri
+                onTomarFoto(uri)
             } ?: Log.e("EscaneoAlimentosPage", "Error: Uri temporal era null")
         } else {
             Log.e("EscaneoAlimentosPage", "Error al tomar foto o cancelado")
         }
     }
 
-    // Efecto para hacer scroll al inicio de la lista (que visualmente es abajo
-    // cuando reverseLayout = true) cuando se añade un nuevo escaneo.
-    // Esto asume que los nuevos escaneos se AÑADEN AL PRINCIPIO de uiState.misEscaneos
-    // en el ViewModel.
     LaunchedEffect(uiState.misEscaneos.size) {
         if (uiState.misEscaneos.isNotEmpty()) {
             scope.launch {
-                // Anima el scroll al primer ítem de la lista de datos (índice 0),
-                // que con reverseLayout = true, es el que está más abajo en la pantalla.
+                // Scroll al nuevo item (índice 0 debido a reverseLayout=true)
                 lazyListState.animateScrollToItem(0)
             }
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) { // Box para permitir la superposición del FAB
+    Box(modifier = modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
+            modifier = Modifier.fillMaxSize()
         ) {
             Text(
-                "Escaneos de Alimentos",
-                style = MaterialTheme.typography.titleSmall,
+                "Mis Alimentos",
+                style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier
-                    .padding(16.dp) // Padding para el título
+                    .padding(16.dp)
                     .align(Alignment.CenterHorizontally)
             )
 
@@ -78,6 +71,7 @@ fun EscaneoAlimentosPage(
             if (uiState.isScanning) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
+                    // Esta Row ocupa todo el ancho y centra su contenido (indicador + texto)
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp, horizontal = 16.dp),
@@ -91,46 +85,51 @@ fun EscaneoAlimentosPage(
 
             // Lista de escaneos
             if (uiState.isScanListLoading && uiState.misEscaneos.isEmpty() && !uiState.isScanning) {
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                // Este Box ocupa todo el espacio restante (weight(1f))
+                // y centra el CircularProgressIndicator en ese espacio.
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth(), // fillMaxWidth para asegurar que el centrado horizontal del Box funcione
+                    contentAlignment = Alignment.Center
+                ) {
                     CircularProgressIndicator()
                 }
             } else if (uiState.misEscaneos.isEmpty() && !uiState.isScanning) {
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                // Similar al anterior, para centrar el mensaje de "sin escaneos".
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        "Toma una foto para analizar un alimento.",
+                        "Toma una foto para ver que hay en tu comida 😊",
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center
                     )
                 }
             } else {
-                // LazyColumn para mostrar los escaneos
                 LazyColumn(
                     state = lazyListState,
                     modifier = Modifier
-                        .weight(1f) // Ocupa el espacio disponible
+                        .weight(1f)
                         .fillMaxWidth(),
                     contentPadding = PaddingValues(
                         start = 8.dp,
                         end = 8.dp,
                         top = 8.dp,
-                        bottom = 80.dp // Aumentado para el FAB
+                        bottom = 80.dp // Espacio para el FAB
                     ),
-                    // --- CAMBIO AQUÍ: reverseLayout = true ---
-                    reverseLayout = true // Los items se componen de abajo hacia arriba
+                    reverseLayout = true // Para estilo chat (nuevos abajo)
                 ) {
-                    // Asumimos que uiState.misEscaneos ya tiene los más nuevos al principio (índice 0)
                     items(
-                        items = uiState.misEscaneos, // Usa la lista en su orden (nuevo primero)
-                        key = { escaneo -> escaneo.idEscaneo } // Key para optimización
+                        items = uiState.misEscaneos, // Asumiendo nuevos al principio de la lista
+                        key = { escaneo -> escaneo.idEscaneo }
                     ) { escaneo ->
-                        EscaneoItem(escaneo = escaneo) // Usa el Composable con estilo de chat
+                        EscaneoItem(escaneo = escaneo)
                     }
                 }
             }
-        }
+        } // Fin Column
 
-        // FloatingActionButton para tomar la foto
         FloatingActionButton(
             onClick = {
                 val uri = context.createImageUri()
@@ -138,14 +137,13 @@ fun EscaneoAlimentosPage(
                 takePictureLauncher.launch(uri)
             },
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 20.dp)
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.Camera, // Icono actualizado
+                imageVector = Icons.Default.CameraAlt,
                 contentDescription = "Tomar foto de alimento"
             )
         }
-
-    }
+    } // Fin Box
 }
