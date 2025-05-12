@@ -130,7 +130,7 @@ fun HomeScreen(
             // Indicador de Página primero
             PagerIndicator(
                 pagerState = pagerState,
-                pageCount = 3,
+                pageCount = 5,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
             ) { pageIndex ->
                 scope.launch {
@@ -140,7 +140,7 @@ fun HomeScreen(
 
             // HorizontalPager ocupa el espacio restante
             HorizontalPager(
-                count = 3,
+                count = 5,
                 state = pagerState,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -170,12 +170,18 @@ fun HomeScreen(
                             onNavigateToCultivoDetail(cultivo.nombre) // Pasando solo el nombre por ahora
                         }
                     )
-                    2 -> ArticulosSaludPage(
+                    4 -> ArticulosSaludPage(
                         uiState = uiState,
                         onArticuloClick = { articuloId ->
                             onNavigateToArticuloDetail(articuloId)
                         }
                     )
+                    2 -> {
+
+                    }
+                    3 ->{
+
+                    }
                 }
             }
         }

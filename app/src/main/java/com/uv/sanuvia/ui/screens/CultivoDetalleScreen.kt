@@ -74,9 +74,9 @@ fun CultivoDetalleScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Descripción y Pasos para Cultivar:", // Un subtítulo
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
+                text = "Descripción y pasos para cultivar ${cultivo.nombre}:", // Un subtítulo
+                style = MaterialTheme.typography.headlineLarge,
+                modifier = Modifier.padding(bottom = 16.dp)
             )
             Text(
                 text = cultivo.descripcion, // Aquí se muestra la descripción completa

@@ -5,7 +5,7 @@ const admin = require("firebase-admin");
 const axios = require("axios");
 const {
   SecretManagerServiceClient,
-} = require("@google-cloud/secret-manager"); // Dividido
+} = require("@google-cloud/secret-manager");
 const util = require("util");
 
 // Inicializa Firebase Admin SDK (solo una vez)
@@ -16,30 +16,31 @@ const db = admin.firestore();
 const storage = admin.storage(); // Para admin.storage().bucket()
 const secretManagerClient = new SecretManagerServiceClient();
 
-// --- Función Auxiliar para obtener API Key ---
+// --- Función Auxiliar para obtener API Key de Gemini ---
 /**
- * Obtiene la API Key de OpenAI desde Secret Manager.
- * @return {Promise<string>} La clave API.
+ * Obtiene la API Key de Gemini desde Secret Manager.
+ * @return {Promise<string>} La clave API de Gemini.
  * @throws {HttpsError} Si no se puede obtener la clave.
  */
-async function getOpenAiApiKey() {
-  const name = "projects/379146167730/secrets/OPENAI_API_KEY/versions/1";
-  console.log(`Accediendo al secreto: ${name}`);
+async function getGeminiApiKey() {
+  // Usa 'latest' para obtener la versión más reciente del secreto.
+  const name = "projects/379146167730/secrets/GEMINI_API_KEY/versions/1";
+  console.log(`Accediendo al secreto de Gemini: ${name}`);
   try {
     const [version] = await secretManagerClient.accessSecretVersion({name});
     const payload = version.payload.data.toString("utf8");
     if (!payload) {
-      throw new Error("Secret Manager devolvió una API Key vacía.");
+      throw new Error("Secret Manager devolvió una API Key de Gemini vacía.");
     }
     return payload;
   } catch (error) {
     console.error(
-        "Error crítico al acceder a Secret Manager:",
+        "Error crítico al acceder a Secret Manager (Gemini):",
         error.message || error,
     );
     throw new HttpsError(
         "internal",
-        "No se pudo obtener la configuración segura.",
+        "No se pudo obtener la configuración segura de Gemini.",
         error.message,
     );
   }
@@ -62,9 +63,9 @@ function normalizeId(inputString) {
 
 // --- Cloud Function Principal (HTTPS Callable - 2ª Generación) ---
 exports.obtenerCultivosPorUbicacion = onCall(
-    { // Opciones de ejecución para 2ª gen
-      timeoutSeconds: 300, // 5 minutos
-      memory: "1GiB", // Nota: "GiB" para 2ª gen
+    {
+      timeoutSeconds: 900,
+      memory: "2GiB",
     },
     async (request) => {
       console.log(
@@ -114,13 +115,37 @@ exports.obtenerCultivosPorUbicacion = onCall(
         if (docSnap.exists) {
           console.log(`Cache hit para (v2): ${idUbicacionNorm}`);
           const datosExistentes = docSnap.data();
+
           if (datosExistentes && Array.isArray(datosExistentes.cultivos)) {
-            const todosTienenImagen =
-              datosExistentes.cultivos.length === 0 ||
-              datosExistentes.cultivos.every(
-                  (c) => c && typeof c.urlImagen === "string" && c.urlImagen,
+            console.log(
+                "Datos de caché (cultivos):",
+                JSON.stringify(datosExistentes.cultivos, null, 2),
+            );
+
+            let todosTienenImagenValida = true;
+            if (datosExistentes.cultivos.length > 0) {
+              todosTienenImagenValida = datosExistentes.cultivos.every(
+                  (c, index) => {
+                    const tieneUrl = c && typeof c.urlImagen === "string" &&
+                      c.urlImagen && c.urlImagen.startsWith("http");
+                    if (!tieneUrl) {
+                      console.warn(
+                          `Cultivo en caché (índice ${index},`,
+                          `nombre: ${c?.nombre})`,
+                          `NO tiene urlImagen válida: ${c?.urlImagen}`,
+                      );
+                    }
+                    return tieneUrl;
+                  },
               );
-            if (todosTienenImagen) {
+            }
+
+            console.log(
+                `Evaluación de caché: ¿Todos tienen imagen válida?`,
+                todosTienenImagenValida,
+            );
+
+            if (todosTienenImagenValida) {
               console.log(
                   `Devolviendo ${datosExistentes.cultivos.length} cultivos`,
                   "(v2 caché).",
@@ -128,14 +153,14 @@ exports.obtenerCultivosPorUbicacion = onCall(
               return {cultivos: datosExistentes.cultivos};
             } else {
               console.warn(
-                  `CacheHit ${idUbicacionNorm} (v2), faltan URLs.`,
-                  "Regenerando...",
+                  `CacheHit ${idUbicacionNorm} (v2), pero faltan URLs`,
+                  "de imagen válidas. Regenerando...",
               );
             }
           } else {
             console.warn(
                 `Doc ${idUbicacionNorm} (v2) existe pero 'cultivos'`,
-                "inválido. Regenerando...",
+                "es inválido o no es array. Regenerando...",
             );
           }
         }
@@ -143,73 +168,86 @@ exports.obtenerCultivosPorUbicacion = onCall(
             `Cache miss o datos incompletos para ${idUbicacionNorm} (v2).`,
         );
 
-        // 4. OBTENER NOMBRES Y DESCRIPCIONES (GPT)
-        const apiKey = await getOpenAiApiKey();
+        // 4. OBTENER NOMBRES Y DESCRIPCIONES (GEMINI TEXT)
+        const geminiApiKey = await getGeminiApiKey();
         const promptDescripcionesLines = [
-          "Eres un asistente experto meastro en agricultura .",
+          "Eres un asistente experto maestro en agricultura.",
           `Para la ubicación "${ubicacionOriginal}", lista los 7-10 cultivos`,
-          "agrícolas más comunes y relevantes. Para cada uno, da su nombre",
-          "común y una robusta descripción sobre su",
-          "características en la zona y pasos puntuales",
-          "detallando cada paso punto a punto para cultivar.",
-          "Tutorial completo y util, al menos 3000 caracteres por cultivo",
+          "agrícolas más comunes y relevantes. Para cada uno, proporciona su",
+          "nombre común y una descripción robusta sobre sus características",
+          "en la zona, incluyendo pasos puntuales y detallados para su",
+          "cultivo. Ofrece un tutorial completo y útil, con al menos 2000",
+          "caracteres por cultivo.",
           "IMPORTANTE: Formatea tu respuesta EXCLUSIVAMENTE como un array",
           "JSON válido. Cada elemento debe ser un objeto con claves",
-          "\"nombre\" (string) y \"descripcion\" (string).",
+          "\"nombre\" (string) y \"descripcion\" (string). No incluyas",
+          "bloques Markdown, solo el JSON directo.",
           "Ejemplo: [{\"nombre\":\"CultivoA\",\"descripcion\":\"Desc A.\"}]",
         ];
         const promptDescripciones = promptDescripcionesLines.join("\n").trim();
 
         let cultivosBase = [];
         try {
-          console.log("Llamando a GPT para descripciones (v2)...");
-          const responseGpt = await axios.post(
-              "https://api.openai.com/v1/chat/completions",
-              {
-                model: "gpt-4o-mini",
-                messages: [{role: "user", content: promptDescripciones}],
-                temperature: 0.5,
-                max_tokens: 3200,
-              },
-              {headers: {
-                "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-              }},
-          );
-          const choiceGpt = responseGpt.data?.choices?.[0];
-          if (choiceGpt?.message?.content) {
-            let contentGpt = choiceGpt.message.content.trim();
-            const jsonMatch =
-              contentGpt.match(/```json\s*([\s\S]*?)\s*```/) ||
-              contentGpt.match(/```\s*([\s\S]*?)\s*```/);
-            if (jsonMatch && jsonMatch[1]) contentGpt = jsonMatch[1].trim();
-            else if (!contentGpt.startsWith("[") || !contentGpt.endsWith("]")) {
-              console.warn("Respuesta GPT (v2) no parece JSON directo.");
-            }
-            cultivosBase = JSON.parse(contentGpt);
+          console.log("Llamando a Gemini para descripciones (v2)...");
+          const textModel = "gemini-1.5-flash-latest"; // Modelo de texto
+          const textApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${textModel}:generateContent?key=${geminiApiKey}`;
+          const textData = {
+            contents: [{
+              parts: [{text: promptDescripciones}],
+            }],
+            generationConfig: { // Configuración para texto
+              temperature: 0.2, // Menos creatividad para datos estructurados
+              // maxOutputTokens: 8192, // Modelo define el máximo
+              responseMimeType: "application/json", // Esperamos JSON
+            },
+          };
+
+          const responseGeminiText = await axios.post(textApiUrl, textData, {
+            headers: {"Content-Type": "application/json"},
+          });
+
+          // Gemini suele devolver el JSON dentro de la parte de texto
+          // cuando se le pide explícitamente formato JSON.
+          const rawResponseText =
+            responseGeminiText.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+          console.log("💬 Gemini Text raw response part (v2):", rawResponseText);
+
+          if (rawResponseText) {
+            // Intenta parsear el texto como JSON
+            // Eliminar posible Markdown si Gemini aún lo añade a veces
+            const jsonText = rawResponseText
+                .replace(/^```json\s*/i, "")
+                .replace(/```$/i, "")
+                .trim();
+            cultivosBase = JSON.parse(jsonText);
+
             if (!Array.isArray(cultivosBase)) cultivosBase = [];
             cultivosBase = cultivosBase.filter(
                 (c) => c && typeof c.nombre === "string" &&
                        typeof c.descripcion === "string",
             );
             console.log(
-                `GPT (v2) devolvió ${cultivosBase.length} cultivos base.`,
+                `Gemini (v2) devolvió ${cultivosBase.length} cultivos base.`,
             );
+          } else {
+            console.warn("Gemini (v2) no devolvió contenido de texto útil.");
+            cultivosBase = [];
           }
         } catch (error) {
           console.error(
-              "Error obteniendo descripciones de GPT (v2):",
-              error,
+              "Error obteniendo descripciones de Gemini (v2):",
+              util.inspect(error.response?.data || error.message, {depth: 5}),
           );
           throw new HttpsError(
               "unavailable",
-              "Error al obtener datos base de cultivos (v2).",
+              "Error al obtener datos base de cultivos con Gemini (v2).",
           );
         }
 
         if (cultivosBase.length === 0) {
           console.log(
-              "No se obtuvieron cultivos base (v2). Guardando vacío.",
+              "No se obtuvieron cultivos base con Gemini. Guardando vacío.",
           );
           await docRef.set({
             nombreOriginal: ubicacionOriginal,
@@ -219,89 +257,115 @@ exports.obtenerCultivosPorUbicacion = onCall(
           return {cultivos: []};
         }
 
-        // 5. GENERAR/SUBIR IMAGEN PARA CADA CULTIVO
-        const bucket = storage.bucket(); // Bucket por defecto
+        // 5. GENERAR/SUBIR IMAGEN PARA CADA CULTIVO (GEMINI IMAGE)
+        const bucket = storage.bucket();
         const cultivosFinales = [];
-        // URL por defecto si falla DALL-E (ajusta el nombre y token)
-        const defaultImageUrl = "https://firebasestorage.googleapis.com"+
-                                "/v0/b/anfeca2025.firebasestorage.app/o/"+
-                                "imagenes_cultivos%2Fdefault%2F20250509_2"+
-                                "238_Plantas%20Hiperealistas%20Coloridas_"+
-                                "simple_compose_01jtw7rgqvfkc8naa5j2z56h1k.png"+
-                                "?alt=media&token=331db839-7710-4755-b386-"+
-                                "b145b7bcf26c";
+        const defaultImageUrl = "https://firebasestorage.googleapis."+
+        "com/v0/b/anfeca2025.firebasestorage.app/o/imagenes_cultivos%2Fd"+
+        "efault%2F20250509_2238_Plantas%20Hiperealistas%20Coloridas_simple_"+
+        "compose_01jtw7rgqvfkc8naa5j2z56h1k.png?alt=media&token=331db839-771"+
+        "0-4755-b386-b145b7bcf26c";
 
-        await Promise.all(
-            cultivosBase.map(async (cultivoBase) => {
-              let urlImagenCultivo = null;
-              const nombreCultivoNorm = normalizeId(cultivoBase.nombre);
-              if (!nombreCultivoNorm) {
-                console.warn(
-                    `No se normalizó nombre (v2): ${cultivoBase.nombre}`,
-                );
-                cultivosFinales.push({
-                  ...cultivoBase,
-                  urlImagen: defaultImageUrl,
-                });
-                return;
-              }
-              try {
-                console.log(
-                    `Procesando imagen para (v2): ${cultivoBase.nombre}`,
-                );
-                const promptImagen =
-                  `Fotografia real de planta de ${cultivoBase.nombre}` +
-                  ", imagen llamativa, estimulate, perfecta";
-                const responseDalle = await axios.post(
-                    "https://api.openai.com/v1/images/generations",
-                    {
-                      model: "dall-e-3",
-                      prompt: promptImagen,
-                      n: 1,
-                      size: "1024x1024",
-                      response_format: "b64_json",
-                    },
-                    {headers: {
-                      "Authorization": `Bearer ${apiKey}`,
-                      "Content-Type": "application/json",
-                    }},
-                );
-                const base64ImageData =
-                  responseDalle.data?.data?.[0]?.b64_json;
-                if (base64ImageData) {
-                  const imageBuffer = Buffer.from(base64ImageData, "base64");
-                  const filePath =
-                    `imagenes_cultivos/${idUbicacionNorm}/` +
-                    `${nombreCultivoNorm}.png`;
-                  const file = bucket.file(filePath);
-                  await file.save(imageBuffer, {
-                    metadata: {contentType: "image/png"},
-                    public: true,
-                  });
-                  urlImagenCultivo = file.publicUrl();
-                  console.log(
-                      `Imagen subida (v2) para ${cultivoBase.nombre}`,
-                  );
-                } else {
-                  console.warn(
-                      `No b64_json DALL-E (v2) para ${cultivoBase.nombre}`,
-                  );
-                  urlImagenCultivo = defaultImageUrl;
-                }
-              } catch (error) {
-                console.error(
-                    `Error img/upload (v2) para ${cultivoBase.nombre}:`,
-                    error.response?.data || error.message,
-                );
-                urlImagenCultivo = defaultImageUrl;
-              }
-              cultivosFinales.push({
-                nombre: cultivoBase.nombre,
-                descripcion: cultivoBase.descripcion,
-                urlImagen: urlImagenCultivo, // Será la generada o la default
+        // Modelo de generación de imágenes de Gemini (según tu info)
+        const imageModel = "gemini-2.0-flash-preview-image-generation";
+        const imageApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${imageModel}:generateContent?key=${geminiApiKey}`;
+
+        for (const cultivoBase of cultivosBase) {
+          let urlImagenCultivo = null;
+          const nombreCultivoNorm = normalizeId(cultivoBase.nombre);
+
+          if (!nombreCultivoNorm) {
+            console.warn(
+                `No se normalizó nombre (v2): ${cultivoBase.nombre}`,
+            );
+            cultivosFinales.push({
+              ...cultivoBase,
+              urlImagen: defaultImageUrl,
+            });
+            continue;
+          }
+
+          try {
+            console.log(
+                `Procesando imagen para (v2): ${cultivoBase.nombre}`,
+            );
+            const promptImagen =
+              `Fotografía realista de una planta de ${cultivoBase.nombre}`+
+              ", en su entorno natural, lista para cosecha, colores vivos, " +
+              "iluminación perfecta, toma detallada de la planta.";
+
+            console.log(`Prompt Gemini Img`+
+              `para ${cultivoBase.nombre}: "${promptImagen}"`);
+            const imageDataPayload = {
+              contents: [
+                {
+                  role: "user",
+                  parts: [{ text: promptImagen }],
+                },
+              ],
+              generationConfig: {responseModalities: ["TEXT", "IMAGE"]},
+            };
+            console.log("Enviando solicitud a:", imageApiUrl);
+            console.log("Payload:", JSON.stringify(imageDataPayload, null, 2));
+
+            const responseGeminiImage = await axios.post(
+                imageApiUrl,
+                imageDataPayload,
+                { headers: { "Content-Type": "application/json" } },
+            );
+
+            console.log(
+                JSON.stringify(responseGeminiImage.data, null, 2));
+            const base64ImageData =
+          responseGeminiImage.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (base64ImageData && base64ImageData.length > 100) {
+              console.log(
+                  `Img ${cultivoBase.nombre}(long: ${base64ImageData.length})`,
+              );
+              // Eliminar posible prefijo de data URI si Gemini lo añade
+              const pureBase64 = base64ImageData.startsWith("data:") ?
+                base64ImageData.substring(base64ImageData.indexOf(",") + 1) :
+                base64ImageData;
+
+              const imageBuffer = Buffer.from(pureBase64, "base64");
+              console.log(
+                  `Buffer${cultivoBase.nombre}(size:${imageBuffer.length})`,
+              );
+              const filePath =
+                `imagenes_cultivos/${idUbicacionNorm}/` +
+                `${nombreCultivoNorm}.png`;
+              const file = bucket.file(filePath);
+
+              console.log(`Intentando subir a Storage: ${filePath}`);
+              await file.save(imageBuffer, {
+                metadata: {contentType: "image/png"},
+                public: true,
               });
-            }),
-        );
+              urlImagenCultivo = file.publicUrl();
+              console.log(
+                  `ImagenSubida ${cultivoBase.nombre}: ${urlImagenCultivo}`,
+              );
+            } else {
+              console.warn(
+                  `No se obtuvo base64 ${cultivoBase.nombre}.Respuesta:`,
+                  JSON.stringify(responseGeminiImage.data)?.substring(0, 300),
+              );
+              urlImagenCultivo = defaultImageUrl;
+            }
+          } catch (error) {
+            console.error(
+                `Error img/upload Gemini (v2) para ${cultivoBase.nombre}:`,
+                util.inspect(error.response?.data || error.message, {depth: 5}),
+            );
+            urlImagenCultivo = defaultImageUrl;
+          }
+          cultivosFinales.push({
+            nombre: cultivoBase.nombre,
+            descripcion: cultivoBase.descripcion,
+            urlImagen: urlImagenCultivo,
+          });
+        }
 
         // 6. GUARDAR EN FIRESTORE
         const datosParaGuardarFinal = {
@@ -311,7 +375,7 @@ exports.obtenerCultivosPorUbicacion = onCall(
         };
         await docRef.set(datosParaGuardarFinal);
         console.log(
-            "Datos finales con imágenes guardados (v2) para: " +
+            "Datos finales con imágenes (Gemini) guardados (v2) para: " +
             `${idUbicacionNorm}`,
         );
 
@@ -334,6 +398,4 @@ exports.obtenerCultivosPorUbicacion = onCall(
         }
       }
     },
-); // Fin exports.obtenerCultivosPorUbicacion (v2)
-
-// Asegúrate de tener una línea en blanco al final del archivo
+);

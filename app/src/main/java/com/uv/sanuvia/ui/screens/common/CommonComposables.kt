@@ -1,7 +1,5 @@
 package com.uv.sanuvia.ui.screens.common
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,6 +37,8 @@ import com.uv.sanuvia.data.repository.EscaneoAlimento
 import java.text.SimpleDateFormat
 import java.util.Locale
 import androidx.compose.foundation.layout.widthIn // Para limitar el ancho de la burbuja
+import androidx.compose.material.icons.filled.PeopleAlt
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.ui.text.style.TextAlign
@@ -97,7 +97,11 @@ fun PagerIndicator(
         val icons = listOf(
             Icons.Filled.CropFree to "Escanear Alimento",
             Icons.Filled.Compost to "Cultivos por Ubicación",
+            Icons.Filled.PeopleAlt to "Foro de recetas",
+            Icons.Filled.Storefront to "Productos Locales",
             Icons.Filled.ChildCare to "Artículos de Salud"
+
+
         )
 
         repeat(pageCount) { index ->

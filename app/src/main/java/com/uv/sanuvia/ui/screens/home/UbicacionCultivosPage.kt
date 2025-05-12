@@ -106,7 +106,7 @@ fun UbicacionCultivosPage(
             )
         } else if (uiState.cultivos.isEmpty() && uiState.direccionUsuario != null) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text("No se encontraron cultivos para esta área.")
+            CircularProgressIndicator()
         } else if (uiState.cultivos.isNotEmpty()) {
             // Usamos LazyVerticalGrid para la retícula
             LazyVerticalGrid(
