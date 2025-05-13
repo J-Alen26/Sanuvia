@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.uv.sanuvia.ui.screens.common.ProfileAvatar
+import com.uv.sanuvia.ui.screens.common.ProfileAvatarConUrl
 
 @Composable
 fun ForoScreen(
@@ -238,7 +239,7 @@ fun PublicacionItemConComentarios(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                ProfileAvatar()
+                ProfileAvatarConUrl(imageUrl = publicacion.userProfileImageUrl)
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = publicacion.username ?: "Usuario Anónimo",
