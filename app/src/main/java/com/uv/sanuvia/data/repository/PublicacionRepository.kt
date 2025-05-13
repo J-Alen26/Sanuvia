@@ -13,7 +13,6 @@ class PublicacionRepository {
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val PUBLICACIONES_COLLECTION = "publicaciones"
-    private val LIKES_SUBCOLLECTION = "likes_usuarios"
 
     // Crear una nueva publicación (sin cambios relevantes para los likes)
     suspend fun crearPublicacion(publicacion: Publicacion): Result<String> = withContext(Dispatchers.IO) {
@@ -24,7 +23,7 @@ class PublicacionRepository {
                 "content" to publicacion.content,
                 "likes" to publicacion.likes,
                 "timestamp" to FieldValue.serverTimestamp(),
-                "username" to publicacion.username, // Asegúrate de guardar estos campos también
+                "username" to publicacion.username,
                 "userProfileImageUrl" to publicacion.userProfileImageUrl
             )
             val documentRef = db.collection(PUBLICACIONES_COLLECTION)
@@ -69,113 +68,37 @@ class PublicacionRepository {
         }
     }
 
-    // ... (funciones actualizarPublicacion y eliminarPublicacion sin cambios relevantes para los likes) ...
-
-    // Dar like a una publicación (limitado a un like por usuario)
+    // Dar like a una publicación
     suspend fun darLikePublicacion(idPublicacion: String): Result<Unit> = withContext(Dispatchers.IO) {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            return@withContext Result.failure(Exception("Usuario no autenticado."))
-        }
-
         try {
-            Log.d("PublicacionRepository", "Intentando dar like a publicación con ID: $idPublicacion por usuario: $userId")
+            Log.d("PublicacionRepository", "Dando like a publicación con ID: $idPublicacion...")
 
-            val likeDocumentRef = db.collection(PUBLICACIONES_COLLECTION)
-                .document(idPublicacion)
-                .collection(LIKES_SUBCOLLECTION)
-                .document(userId)
-                .get()
+            // Utilizamos FieldValue.increment para aumentar de manera atómica el contador de likes
+            val incrementLikes = hashMapOf<String, Any>(
+                "likes" to com.google.firebase.firestore.FieldValue.increment(1)
+            )
+
+            db.collection("publicaciones").document(idPublicacion)
+                .update(incrementLikes)
                 .await()
 
-            if (likeDocumentRef.exists()) {
-                Log.d("PublicacionRepository", "El usuario $userId ya dio like a la publicación $idPublicacion.")
-                return@withContext Result.failure(Exception("Ya has dado like a esta publicación."))
-            }
-
-            // Si el usuario no ha dado like, agregamos su ID a la subcolección de likes
-            db.collection(PUBLICACIONES_COLLECTION)
-                .document(idPublicacion)
-                .collection(LIKES_SUBCOLLECTION)
-                .document(userId)
-                .set(hashMapOf("timestamp" to FieldValue.serverTimestamp())) // Puedes guardar más info si quieres
-                .await()
-
-            // Incrementamos el contador de likes en el documento principal de la publicación
-            db.collection(PUBLICACIONES_COLLECTION).document(idPublicacion)
-                .update("likes", FieldValue.increment(1))
-                .await()
-
-            Log.d("PublicacionRepository", "Like aplicado a publicación con ID: $idPublicacion por usuario: $userId")
+            Log.d("PublicacionRepository", "Like aplicado a publicación con ID: $idPublicacion")
             Result.success(Unit)
-
         } catch (e: Exception) {
             Log.e("PublicacionRepository", "Error al dar like: ${e.message}", e)
             Result.failure(Exception("Error al dar like a la publicación: ${e.localizedMessage}", e))
         }
     }
 
-    // Quitar like a una publicación
-    suspend fun quitarLikePublicacion(idPublicacion: String): Result<Unit> = withContext(Dispatchers.IO) {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            return@withContext Result.failure(Exception("Usuario no autenticado."))
-        }
+    // Ya no necesitamos la función haDadoLike
 
-        try {
-            Log.d("PublicacionRepository", "Intentando quitar like a publicación con ID: $idPublicacion por usuario: $userId")
-
-            // Eliminamos el documento del usuario de la subcolección de likes
-            val likeDocumentRef = db.collection(PUBLICACIONES_COLLECTION)
-                .document(idPublicacion)
-                .collection(LIKES_SUBCOLLECTION)
-                .document(userId)
-                .delete()
-                .await()
-
-            // Decrementamos el contador de likes en el documento principal de la publicación
-            db.collection(PUBLICACIONES_COLLECTION).document(idPublicacion)
-                .update("likes", FieldValue.increment(-1))
-                .await()
-
-            Log.d("PublicacionRepository", "Like quitado de publicación con ID: $idPublicacion por usuario: $userId")
-            Result.success(Unit)
-
-        } catch (e: Exception) {
-            Log.e("PublicacionRepository", "Error al quitar like: ${e.message}", e)
-            Result.failure(Exception("Error al quitar like de la publicación: ${e.localizedMessage}", e))
-        }
-    }
-
-    // Función para verificar si el usuario actual ya dio like a una publicación
-    suspend fun haDadoLike(idPublicacion: String): Boolean = withContext(Dispatchers.IO) {
-        val userId = auth.currentUser?.uid
-        if (userId == null) {
-            return@withContext false // Usuario no autenticado no puede haber dado like
-        }
-
-        return@withContext try {
-            val likeDocumentRef = db.collection(PUBLICACIONES_COLLECTION)
-                .document(idPublicacion)
-                .collection(LIKES_SUBCOLLECTION)
-                .document(userId)
-                .get()
-                .await()
-            likeDocumentRef.exists()
-        } catch (e: Exception) {
-            Log.e("PublicacionRepository", "Error al verificar si el usuario dio like: ${e.message}", e)
-            false // En caso de error, asumimos que no ha dado like para permitir reintentar
-        }
-    }
-
-    // Actualizar una publicación
+    // Actualizar una publicación (sin cambios relevantes para los likes)
     suspend fun actualizarPublicacion(
         idPublicacion: String,
         publicacion: Publicacion,
         usuarioActualId: String
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            // Primero verificamos que la publicación pertenezca al usuario actual
             val docSnapshot = db.collection("publicaciones")
                 .document(idPublicacion)
                 .get()
@@ -188,16 +111,12 @@ class PublicacionRepository {
             }
 
             Log.d("PublicacionRepository", "Actualizando publicación con ID: $idPublicacion...")
-
-            // Actualizamos solo el contenido de la publicación, manteniendo el resto de datos
             val updateData = hashMapOf<String, Any>(
                 "content" to publicacion.content
             )
-
             db.collection("publicaciones").document(idPublicacion)
                 .update(updateData)
                 .await()
-
             Log.d("PublicacionRepository", "Publicación actualizada con ID: $idPublicacion")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -206,13 +125,12 @@ class PublicacionRepository {
         }
     }
 
-    // Eliminar una publicación
+    // Eliminar una publicación (sin cambios relevantes para los likes)
     suspend fun eliminarPublicacion(
         idPublicacion: String,
         usuarioActualId: String
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            // Primero verificamos que la publicación pertenezca al usuario actual
             val docSnapshot = db.collection("publicaciones")
                 .document(idPublicacion)
                 .get()
@@ -235,5 +153,4 @@ class PublicacionRepository {
             Result.failure(Exception("Error al eliminar la publicación: ${e.localizedMessage}", e))
         }
     }
-
 }

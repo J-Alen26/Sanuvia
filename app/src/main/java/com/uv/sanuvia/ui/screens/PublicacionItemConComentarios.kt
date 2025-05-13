@@ -14,7 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.uv.sanuvia.data.repository.Publicacion
-import com.uv.sanuvia.ui.screens.common.ProfileAvatar
+import com.uv.sanuvia.ui.screens.common.ProfileAvatarConUrl
 
 @Composable
 fun PublicacionItemConComentarios(
@@ -45,10 +45,10 @@ fun PublicacionItemConComentarios(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                ProfileAvatar()
+                ProfileAvatarConUrl(imageUrl = publicacion.userProfileImageUrl)
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = publicacion.authorId,
+                    text = publicacion.username ?: "Usuario Anónimo",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp

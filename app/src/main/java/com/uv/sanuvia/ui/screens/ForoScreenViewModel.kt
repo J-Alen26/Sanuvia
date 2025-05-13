@@ -12,9 +12,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.Result
+import android.util.Log
 
 data class ForoScreenState(
-    val publicaciones: List<PublicacionConEstadoLike> = emptyList(), // Cambiamos a una lista de PublicacionConEstadoLike
+    val publicaciones: List<Publicacion> = emptyList(), // Ahora la lista contiene directamente Publicacion
     val isPublicacionesLoading: Boolean = false,
     val publicacionError: String? = null,
     val isCreatingPublicacion: Boolean = false,
@@ -27,10 +28,7 @@ data class ForoScreenState(
     val usuarioActualId: String? = null
 )
 
-data class PublicacionConEstadoLike(
-    val publicacion: Publicacion,
-    val haDadoLike: Boolean
-)
+// Ya no necesitamos la clase PublicacionConEstadoLike
 
 class ForoScreenViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -45,22 +43,18 @@ class ForoScreenViewModel(application: Application) : AndroidViewModel(applicati
     val state: StateFlow<ForoScreenState> = _state.asStateFlow()
 
     init {
-        cargarPublicacionesConEstadoLike()
+        cargarPublicaciones() // Cargamos directamente las publicaciones
     }
 
-    fun cargarPublicacionesConEstadoLike() {
+    fun cargarPublicaciones() {
         viewModelScope.launch {
             _state.update { it.copy(isPublicacionesLoading = true, publicacionError = null) }
             val result: Result<List<Publicacion>> = publicacionRepository.obtenerPublicaciones()
             result.onSuccess { listaPublicaciones ->
-                val publicacionesConEstado = listaPublicaciones.map { publicacion ->
-                    val haDadoLikeUsuario = publicacionRepository.haDadoLike(publicacion.idPublicacion)
-                    PublicacionConEstadoLike(publicacion, haDadoLikeUsuario)
-                }
                 _state.update {
                     it.copy(
                         isPublicacionesLoading = false,
-                        publicaciones = publicacionesConEstado,
+                        publicaciones = listaPublicaciones,
                         publicacionError = null
                     )
                 }
@@ -84,13 +78,8 @@ class ForoScreenViewModel(application: Application) : AndroidViewModel(applicati
 
         viewModelScope.launch {
             _state.update { it.copy(isCreatingPublicacion = true, publicacionError = null) }
-            // Aquí deberías obtener el username y userProfileImageUrl del usuario actual
-            // y pasarlos al crear la publicación. Esto dependerá de dónde guardes
-            // esa información (Firebase Auth profile, Firestore, etc.).
             val usuario = auth.currentUser
             val username = usuario?.displayName
-            // Asumiendo que tienes una forma de obtener la URL de la foto de perfil
-            // Podría ser desde el objeto 'usuario' o desde Firestore.
             val userProfileImageUrl = usuario?.photoUrl?.toString()
 
             val nuevaPublicacion = Publicacion(
@@ -103,32 +92,31 @@ class ForoScreenViewModel(application: Application) : AndroidViewModel(applicati
             val result: Result<String> = publicacionRepository.crearPublicacion(nuevaPublicacion)
             result.onSuccess { nuevoId ->
                 _state.update { it.copy(isCreatingPublicacion = false, publicacionError = null, lastPublicacionId = nuevoId) }
-                cargarPublicacionesConEstadoLike()
+                cargarPublicaciones() // Recargamos las publicaciones
             }.onFailure { exception ->
                 _state.update { it.copy(isCreatingPublicacion = false, publicacionError = exception.localizedMessage) }
             }
         }
     }
 
-    fun toggleLikePublicacion(idPublicacion: String, haDadoLikeActual: Boolean) {
+    fun toggleLikePublicacion(idPublicacion: String) {
         viewModelScope.launch {
-            val result = if (haDadoLikeActual) {
-                publicacionRepository.quitarLikePublicacion(idPublicacion)
-            } else {
-                publicacionRepository.darLikePublicacion(idPublicacion)
-            }
-
+            Log.d("ForoViewModel", "Intentando dar like a la publicación con ID: $idPublicacion")
+            val result = publicacionRepository.darLikePublicacion(idPublicacion)
             result.onSuccess {
-                // Recargar la lista completa para actualizar el estado de like de todas las publicaciones
-                cargarPublicacionesConEstadoLike()
+                Log.d("ForoViewModel", "Like incrementado exitosamente para la publicación con ID: $idPublicacion")
+                // No necesitamos verificar si ya dio like, simplemente incrementamos
+                // Opcionalmente, podrías recargar las publicaciones para ver el cambio inmediato
+                cargarPublicaciones()
             }.onFailure { exception ->
+                Log.e("ForoViewModel", "Error al dar like a la publicación con ID: $idPublicacion: ${exception.localizedMessage}", exception)
                 _state.update { it.copy(publicacionError = exception.localizedMessage) }
             }
         }
     }
 
     fun mostrarDialogoEliminar(idPublicacion: String) {
-        val publicacion = _state.value.publicaciones.find { it.publicacion.idPublicacion == idPublicacion }?.publicacion
+        val publicacion = _state.value.publicaciones.find { it.idPublicacion == idPublicacion }
 
         if (publicacion != null && esAutorDeLaPublicacion(publicacion)) {
             _state.update { it.copy(mostrandoDialogoEliminar = true, idPublicacionAEliminar = idPublicacion) }
@@ -146,7 +134,7 @@ class ForoScreenViewModel(application: Application) : AndroidViewModel(applicati
 
             val result = publicacionRepository.eliminarPublicacion(idPublicacion, usuarioActualId)
             result.onSuccess {
-                cargarPublicacionesConEstadoLike()
+                cargarPublicaciones()
             }.onFailure { exception ->
                 _state.update { it.copy(publicacionError = exception.localizedMessage) }
             }
@@ -157,8 +145,7 @@ class ForoScreenViewModel(application: Application) : AndroidViewModel(applicati
         _state.update { it.copy(mostrandoDialogoEliminar = false, idPublicacionAEliminar = null) }
     }
 
-    fun mostrarDialogoEditar(publicacionConEstadoLike: PublicacionConEstadoLike) {
-        val publicacion = publicacionConEstadoLike.publicacion
+    fun mostrarDialogoEditar(publicacion: Publicacion) {
         if (esAutorDeLaPublicacion(publicacion)) {
             _state.update {
                 it.copy(
@@ -194,7 +181,7 @@ class ForoScreenViewModel(application: Application) : AndroidViewModel(applicati
             val result = publicacionRepository.actualizarPublicacion(idPublicacion, publicacionActualizada, usuarioActualId)
 
             result.onSuccess {
-                cargarPublicacionesConEstadoLike()
+                cargarPublicaciones()
             }.onFailure { exception ->
                 _state.update { it.copy(publicacionError = exception.localizedMessage) }
             }
