@@ -36,6 +36,7 @@ import com.uv.sanuvia.ui.screens.common.ProfileAvatar
 @Composable
 fun ForoScreen(
     foroViewModel: ForoScreenViewModel = viewModel(),
+    comentariosViewModel: ComentariosViewModel = viewModel()
 ) {
     val state by foroViewModel.state.collectAsState()
     var nuevaPublicacion by remember { mutableStateOf("") }
@@ -198,6 +199,14 @@ fun ForoScreen(
                 contentPadding = PaddingValues(vertical = 4.dp)
             ) {
                 items(state.publicaciones) { publicacion ->
+                    PublicacionItemConComentarios(
+                        publicacion = publicacion,
+                        onLikeClick = { foroViewModel.darLikePublicacion(publicacion.idPublicacion) },
+                        onDeleteClick = { foroViewModel.mostrarDialogoEliminar(publicacion.idPublicacion) },
+                        onEditClick = { foroViewModel.mostrarDialogoEditar(publicacion) },
+                        esPropietario = foroViewModel.esAutorDeLaPublicacion(publicacion),
+                        comentariosViewModel = comentariosViewModel
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
             }
