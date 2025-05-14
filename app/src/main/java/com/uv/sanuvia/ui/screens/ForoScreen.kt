@@ -12,6 +12,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uv.sanuvia.ui.screens.common.ProfileAvatar
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 
 @Composable
 fun ForoScreen(
@@ -30,34 +33,55 @@ fun ForoScreen(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            shape = RoundedCornerShape(16.dp),
+                .padding(bottom = 12.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.Top, // Cambiado a Top para alinear mejor con texto multilínea
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    ProfileAvatar()
+                    ProfileAvatar(
+                        modifier = Modifier.size(40.dp) // Mismo tamaño que en las otras tarjetas
+                    )
                     Spacer(modifier = Modifier.width(12.dp))
                     OutlinedTextField(
                         value = nuevaPublicacion,
                         onValueChange = { nuevaPublicacion = it },
-                        placeholder = { Text("escribe aqui", color = Color.Gray) },
+                        placeholder = {
+                            Text(
+                                "Escribe aquí",
+                                color = Color.Gray,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
                         modifier = Modifier
                             .weight(1f)
-                            .height(56.dp),
+                            .defaultMinSize(minHeight = 40.dp), // Altura mínima pero expandible
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedBorderColor = Color.Transparent,
                             focusedBorderColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
                             focusedContainerColor = Color.Transparent
                         ),
-                        maxLines = 1
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        maxLines = Int.MAX_VALUE, // Permite múltiples líneas
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                if (nuevaPublicacion.isNotBlank()) {
+                                    foroViewModel.crearPublicacion(nuevaPublicacion)
+                                    nuevaPublicacion = ""
+                                }
+                            }
+                        )
                     )
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
@@ -69,15 +93,27 @@ fun ForoScreen(
                                 nuevaPublicacion = ""
                             }
                         },
-                        enabled = !state.isCreatingPublicacion,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3A3E47)),
-                        shape = RoundedCornerShape(20.dp)
+                        enabled = nuevaPublicacion.isNotBlank() && !state.isCreatingPublicacion,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF3A3E47),
+                            disabledContainerColor = Color(0xFF3A3E47).copy(alpha = 0.5f)
+                        ),
+                        shape = RoundedCornerShape(20.dp),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 0.dp,
+                            pressedElevation = 0.dp
+                        ),
+                        modifier = Modifier.height(36.dp) // Altura más compacta
                     ) {
-                        Text("Publicar")
+                        Text(
+                            "Publicar",
+                            style = MaterialTheme.typography.labelLarge
+                        )
                     }
                 }
             }
         }
+
 
         if (state.isCreatingPublicacion) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
