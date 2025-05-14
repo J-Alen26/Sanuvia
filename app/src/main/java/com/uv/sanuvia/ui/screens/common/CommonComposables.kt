@@ -227,3 +227,32 @@ fun EscaneoItem(escaneo: EscaneoAlimento, modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(20.dp)) // Antes era 12.dp
     }
 }
+
+@Composable
+fun ProfileAvatarConUrl(
+    imageUrl: String? = null,
+    modifier: Modifier = Modifier,
+    size: Dp = 40.dp
+) {
+    if (imageUrl.isNullOrEmpty()) {
+        Icon(
+            imageVector = Icons.Default.AccountCircle,
+            contentDescription = "Avatar placeholder",
+            modifier = modifier
+                .size(size)
+                .clip(CircleShape)
+        )
+    } else {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(imageUrl)
+                .crossfade(true)
+                .build(),
+            contentDescription = "Avatar de usuario",
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+                .size(size)
+                .clip(CircleShape)
+        )
+    }
+}

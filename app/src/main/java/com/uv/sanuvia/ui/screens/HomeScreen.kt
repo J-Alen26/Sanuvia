@@ -25,6 +25,7 @@ import com.uv.sanuvia.ui.screens.home.ArticulosSaludPage
 import com.uv.sanuvia.ui.screens.home.EscaneoAlimentosPage
 import com.uv.sanuvia.ui.screens.home.UbicacionCultivosPage
 import kotlinx.coroutines.launch
+import com.uv.sanuvia.ui.screens.ForoScreen
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPagerApi::class)
 @Composable
@@ -176,9 +177,7 @@ fun HomeScreen(
                             onNavigateToArticuloDetail(articuloId)
                         }
                     )
-                    2 -> {
-
-                    }
+                    2 -> ForoScreen()
                     3 ->{
 
                     }
