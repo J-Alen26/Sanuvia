@@ -17,7 +17,7 @@ import org.json.JSONObject
  */
 class InteligenciaArtificial(
     private val client: OkHttpClient = OkHttpClient(),
-    private val apiKey: String = "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",    // <-- NO expongas la key en código
+    private val apiKey: String = "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",    // <-- NO expongas la key en código
     private val apiUrl: String = "https://api.openai.com/v1/chat/completions"
 ) {
 

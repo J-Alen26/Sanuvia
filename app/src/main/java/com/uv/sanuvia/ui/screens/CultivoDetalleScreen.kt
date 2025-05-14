@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.uv.sanuvia.data.repository.CultivoInfo // Asegúrate que la ruta es correcta
+import dev.jeziellago.compose.markdowntext.MarkdownText // ¡Importa el Composable!
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,8 +80,8 @@ fun CultivoDetalleScreen(
                 style = MaterialTheme.typography.headlineLarge,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-            Text(
-                text = cultivo.descripcion, // Aquí se muestra la descripción completa
+            MarkdownText(
+                markdown = cultivo.descripcion,
                 style = MaterialTheme.typography.bodyLarge
             )
 

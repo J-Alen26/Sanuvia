@@ -180,8 +180,13 @@ exports.obtenerCultivosPorUbicacion = onCall(
           "caracteres por cultivo.",
           "IMPORTANTE: Formatea tu respuesta EXCLUSIVAMENTE como un array",
           "JSON válido. Cada elemento debe ser un objeto con claves",
-          "\"nombre\" (string) y \"descripcion\" (string). No incluyas",
-          "bloques Markdown, solo el JSON directo.",
+          "\"nombre\" (string) y \"descripcion\" (string).",
+          "proporciona la respuesta en texto sin formato.",
+          "sin ningún tipo de formato Markdown.",
+          "No pongas los títulos en negrita.",
+          "Evita usar dobles asteriscos para resaltar texto",
+          "en texto plano, no uses ** para resaltar contenido",
+          "Deja dos renglones por cada cultivo",
           "Ejemplo: [{\"nombre\":\"CultivoA\",\"descripcion\":\"Desc A.\"}]",
         ];
         const promptDescripciones = promptDescripcionesLines.join("\n").trim();
@@ -317,8 +322,8 @@ exports.obtenerCultivosPorUbicacion = onCall(
             console.log(
                 JSON.stringify(responseGeminiImage.data, null, 2));
             const base64ImageData =
-          responseGeminiImage.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
+          responseGeminiImage
+              .data?.candidates?.[0]?.content?.parts?.[1]?.inlineData.data;
             if (base64ImageData && base64ImageData.length > 100) {
               console.log(
                   `Img ${cultivoBase.nombre}(long: ${base64ImageData.length})`,

@@ -1,13 +1,17 @@
 package com.uv.sanuvia.navigation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.lifecycle.viewmodel.compose.viewModel // Para obtener ViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -153,7 +157,12 @@ fun NavGraph(isUserLoggedIn: Boolean) {
                         onNavigateBack = { navController.popBackStack() }
                     )
                 } else {
-                    ErrorScreen(message = "Cultivo no encontrado (Nombre: $cultivoNombre).")
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
             } else {
                 ErrorScreen(message = "Nombre de cultivo no válido.")

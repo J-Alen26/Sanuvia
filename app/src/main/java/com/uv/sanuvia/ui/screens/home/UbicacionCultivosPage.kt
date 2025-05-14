@@ -104,6 +104,8 @@ fun UbicacionCultivosPage(
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall
             )
+            CircularProgressIndicator()
+
         } else if (uiState.cultivos.isEmpty() && uiState.direccionUsuario != null) {
             Spacer(modifier = Modifier.height(8.dp))
             CircularProgressIndicator()
