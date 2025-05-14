@@ -25,6 +25,7 @@ import com.uv.sanuvia.data.repository.Comentario
 import com.uv.sanuvia.ui.screens.common.ProfileAvatar
 import java.text.SimpleDateFormat
 import java.util.*
+import com.uv.sanuvia.ui.screens.common.ProfileAvatarConUrl
 
 @Composable
 fun ComentariosSeccion(
@@ -54,8 +55,9 @@ fun ComentariosSeccion(
         )
 
         // Campo para añadir nuevo comentario
+        // Campo para añadir nuevo comentario modificado para ser expandible
         Row(
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top, // cambiado a Top para que se alinee bien cuando crece
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
@@ -68,14 +70,14 @@ fun ComentariosSeccion(
                 placeholder = { Text("Añade un comentario...", color = Color.Gray) },
                 modifier = Modifier
                     .weight(1f)
-                    .height(50.dp),
+                    .defaultMinSize(minHeight = 50.dp), // Usa defaultMinSize en lugar de height fija
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = Color.LightGray,
                     focusedBorderColor = Color(0xFF8830FF),
                     unfocusedContainerColor = Color.White,
                     focusedContainerColor = Color.White
                 ),
-                maxLines = 1,
+                maxLines = Int.MAX_VALUE, // Permitir múltiples líneas
                 trailingIcon = {
                     IconButton(
                         onClick = {
@@ -157,8 +159,7 @@ fun ComentariosSeccion(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth()
-                .fillMaxWidth()
-                .height(300.dp),
+                    .height(120.dp),
                 contentPadding = PaddingValues(vertical = 4.dp)
             ) {
                 items(state.comentarios) { comentario ->
@@ -197,56 +198,55 @@ fun ComentarioItem(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                ProfileAvatar(size = 32.dp)
+                ProfileAvatarConUrl(
+                    imageUrl = comentario.userProfileImageUrl,
+                    modifier = Modifier.size(32.dp)
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = comentario.authorId,
+                        text = comentario.username ?: "Usuario Anónimo",
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
                         )
                     )
-                    comentario.timestamp?.let {
-                        val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                        val date = it.toDate()
-                        Text(
-                            text = sdf.format(date),
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 12.sp,
-                                color = Color.Gray
-                            )
-                        )
-                    }
                 }
                 if (esPropietario) {
                     var expandedMenu by remember { mutableStateOf(false) }
-                    IconButton(
-                        onClick = { expandedMenu = true },
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.MoreVert,
-                            contentDescription = "Opciones",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = expandedMenu,
-                        onDismissRequest = { expandedMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Filled.Delete,
-                                    contentDescription = "Eliminar",
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            },
-                            text = { Text("Eliminar") },
-                            onClick = { onDeleteClick(); expandedMenu = false }
-                        )
+                    Box {
+                        IconButton(
+                            onClick = { expandedMenu = true },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = "Opciones",
+                                tint = Color.Gray,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = expandedMenu,
+                            onDismissRequest = { expandedMenu = false },
+                            modifier = Modifier
+                                .width(120.dp)
+                                .height(44.dp)  // Ajusta según necesidad
+                        ) {
+                            DropdownMenuItem(
+                                modifier = Modifier.height(30.dp),
+                                text = {
+                                    Text(
+                                        "Eliminar",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                },
+                                onClick = {
+                                    onDeleteClick()
+                                    expandedMenu = false
+                                }
+                            )
+                        }
                     }
                 }
             }

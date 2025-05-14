@@ -8,10 +8,12 @@ data class Comentario(
     @DocumentId
     val idComentario: String = "",
 
-    val publicacionId: String = "",  // ID de la publicación a la que pertenece este comentario
-    val authorId: String = "",       // ID del usuario que escribió el comentario
-    val text: String = "",           // Contenido del comentario
+    val publicacionId: String = "",
+    val authorId: String = "",
+    val text: String = "",
 
     @ServerTimestamp
-    val timestamp: Timestamp? = null
+    val timestamp: Timestamp? = null,
+    val username: String? = null,
+    val userProfileImageUrl: String? = null
 )

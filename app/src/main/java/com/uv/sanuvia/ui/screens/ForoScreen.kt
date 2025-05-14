@@ -45,23 +45,26 @@ fun ForoScreen(
                 )
             }
         }
-        // 1. Área de creación de publicación
+
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 12.dp),
+                    .padding(horizontal = 8.dp, vertical = 4.dp), // Actualizado para coincidir
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp) // Actualizado a 16.dp para coincidir
+                ) {
                     Row(
                         verticalAlignment = Alignment.Top,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         ProfileAvatar(modifier = Modifier.size(40.dp))
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(0.dp))
                         OutlinedTextField(
                             value = nuevaPublicacion,
                             onValueChange = { nuevaPublicacion = it },
@@ -144,6 +147,8 @@ fun ForoScreen(
                     Text("Cerrar")
                 }
             }
+
+            Spacer(modifier = Modifier.height(14.dp))
         }
 
         // 2. Lista de publicaciones

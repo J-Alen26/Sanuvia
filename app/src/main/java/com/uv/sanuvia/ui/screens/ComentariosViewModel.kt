@@ -66,8 +66,12 @@ class ComentariosViewModel(application: Application) : AndroidViewModel(applicat
 
         viewModelScope.launch {
             _state.update { it.copy(isCreating = true, error = null) }
+            val usuario = auth.currentUser
+            val username = usuario?.displayName
+            val userProfileImageUrl = usuario?.photoUrl?.toString()
+
             val nuevoComentario = Comentario(publicacionId = publicacionId, authorId = usuarioActualId, text = texto)
-            val result = comentarioRepository.crearComentario(nuevoComentario)
+            val result = comentarioRepository.crearComentario(nuevoComentario, username, userProfileImageUrl)
             result.onSuccess { _ ->
                 _state.update { it.copy(isCreating = false, error = null) }
                 cargarComentarios(publicacionId)
